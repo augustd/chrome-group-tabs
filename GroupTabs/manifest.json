@@ -1,0 +1,19 @@
+{
+  "manifest_version": 2,
+
+  "name": "GroupTabs",
+  "description": "This extension groups all tabs from the same domain into one window",
+  "icons": {
+    "48": "icon.png"
+  },
+  "version": "1.0",
+  "background": {
+    "persistent": false,
+    "scripts": ["background.js"]
+  },
+  "browser_action": {
+    "default_icon": "icon.png",
+    "default_title": "GroupTabs"
+  },
+  "permissions": ["tabs"]
+}
