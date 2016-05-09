@@ -77,17 +77,12 @@ chrome.browserAction.onClicked.addListener(function() {
  * Add a listener for new tab events
  */
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
-  console.log("urlsToGroup: " + JSON.stringify(urlsToGroup));
   if (alwaysGroup) {
-    console.log("iterating rules...");
     for (var i = 0; i < urlsToGroup.length; i++) {
       var rule = urlsToGroup[i];
-      console.log(JSON.stringify(rule));
-      console.log("trying to match: " + changeInfo.url + " to: " + rule.urlPattern);
       if (matchRuleShort(changeInfo.url, rule.urlPattern)) {
         //the new tab URL matches an existing group.
         //open the new tab in the group window
-        alert("match: " + rule.urlPattern);
         chrome.tabs.move(tab.id, {windowId:rule.window,index:-1});
         
         //focus the newly created tab
