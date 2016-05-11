@@ -48,8 +48,9 @@ function groupTabs(urlPattern) {
       }
       chrome.windows.update(window.id,{focused:true});
       
-      //remember the URL pattern and teh window it was grouped into
+      //remember the URL pattern and the window it was grouped into
       urlsToGroup.push({"urlPattern":urlPattern,"window":window.id});
+      console.log(JSON.stringify(urlsToGroup));
     });
   });  
 }
@@ -82,16 +83,36 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
       var rule = urlsToGroup[i];
       if (matchRuleShort(changeInfo.url, rule.urlPattern)) {
         //the new tab URL matches an existing group.
-        //open the new tab in the group window
-        chrome.tabs.move(tab.id, {windowId:rule.window,index:-1});
         
-        //focus the newly created tab
-        chrome.windows.update(rule.window,{focused:true});
-        chrome.tabs.update(tab.id, {selected:true});
+        //check that the window still exists
+        chrome.windows.get(rule.window, {populate:true}, function(foundWindow){
+          if (foundWindow) {
+            //open the new tab in the group window
+            chrome.tabs.move(tab.id, {windowId:foundWindow.id,index:-1});
+            
+            //focus the newly created tab
+            focusTab(foundWindow, tab);
+          } else {
+            //create a new window with the new tab
+            chrome.windows.create({"tabId":tab.id}, function(newWindow){
+              //reassign the group pattern to the new window
+              rule.window = newWindow.id
+              console.log(JSON.stringify(urlsToGroup));
+
+              //focus the newly created tab
+              focusTab(newWindow, tab);
+            });
+          }
+        });
       }
     }
   }
 });
+
+function focusTab(window, tab) {
+  chrome.windows.update(window.id,{focused:true});
+  chrome.tabs.update(tab.id, {selected:true});
+}
 
 /**
  * Add context menus at startup:
