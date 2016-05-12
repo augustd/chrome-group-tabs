@@ -4,6 +4,7 @@
 
 var urlsToGroup = [];
 var alwaysGroup = false;
+var newTabs     = [];
 
 /**
  * Parses the domain name from the URL of the current tab.
@@ -77,34 +78,46 @@ chrome.browserAction.onClicked.addListener(function() {
 /**
  * Add a listener for new tab events
  */
+chrome.tabs.onCreated.addListener(function(tabId, changeInfo, tab) {
+  if (alwaysGroup) {
+    newTabs.push(tabId.id);
+  }
+});
+
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
   if (alwaysGroup) {
-    for (var i = 0; i < urlsToGroup.length; i++) {
-      var rule = urlsToGroup[i];
-      if (matchRuleShort(changeInfo.url, rule.urlPattern)) {
-        //the new tab URL matches an existing group.
-        
-        //check that the window still exists
-        chrome.windows.get(rule.window, {populate:true}, function(foundWindow){
-          if (foundWindow) {
-            //open the new tab in the group window
-            chrome.tabs.move(tab.id, {windowId:foundWindow.id,index:-1});
-            
-            //focus the newly created tab
-            focusTab(foundWindow, tab);
-          } else {
-            //create a new window with the new tab
-            chrome.windows.create({"tabId":tab.id}, function(newWindow){
-              //reassign the group pattern to the new window
-              rule.window = newWindow.id
-              console.log(JSON.stringify(urlsToGroup));
-
+    //only group new tabs
+    if (newTabs.indexOf(tabId) > -1) {
+      for (var i = 0; i < urlsToGroup.length; i++) {
+        var rule = urlsToGroup[i];
+        if (matchRuleShort(changeInfo.url, rule.urlPattern)) {
+          //the new tab URL matches an existing group.
+          
+          //check that the window still exists
+          chrome.windows.get(rule.window, {populate:true}, function(foundWindow){
+            if (foundWindow) {
+              //open the new tab in the group window
+              chrome.tabs.move(tab.id, {windowId:foundWindow.id,index:-1});
+              
               //focus the newly created tab
-              focusTab(newWindow, tab);
-            });
-          }
-        });
+              focusTab(foundWindow, tab);
+            } else {
+              //create a new window with the new tab
+              chrome.windows.create({"tabId":tab.id}, function(newWindow){
+                //reassign the group pattern to the new window
+                rule.window = newWindow.id
+                console.log(JSON.stringify(urlsToGroup));
+  
+                //focus the newly created tab
+                focusTab(newWindow, tab);
+              });
+            }
+          });
+        }
       }
+      
+      //this is no longer a new tab
+      newTabs.splice(newTabs.indexOf(tab.id), 1);
     }
   }
 });
