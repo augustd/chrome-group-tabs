@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 var urlsToGroup = [];
-var alwaysGroup = false;
+var alwaysGroup = true;
 var newTabs     = [];
 
 /**
@@ -37,23 +37,98 @@ function getCurrentTabDomain(callback) {
  * Groups all tabs with URLs matching a pattern into the same window
  */
 function groupTabs(urlPattern) {
-  var queryInfo = {
-    url: urlPattern
-  };
+  console.log("groupTabs: " + urlPattern); 
   
-  chrome.tabs.query(queryInfo, function(tabs) {
-    chrome.windows.create({tabId:tabs[0].id}, function(window){
-      for (var i = 1; i < tabs.length; i++) {
-        var tab = tabs[i];
-        chrome.tabs.move(tab.id, {windowId:window.id,index:-1});
+  //check if we already have a window for this pattern
+  getTabWindow(urlPattern, function(tabWindow){
+    console.log("groupTabs: tabWindow: " + JSON.stringify(tabWindow));
+    
+    //get the tabs that match the URL pattern
+    chrome.tabs.query({url:urlPattern}, function(tabs) {
+      if (tabWindow) {
+        moveTabs(tabs, tabWindow);
+        
+        //focus the window
+        chrome.windows.update(tabWindow.id,{focused:true});
+        
+      } else {
+        //no existing window for this pattern so create a new window
+        chrome.windows.create({tabId:tabs[0].id}, function(window){
+  
+          console.log("window: " + JSON.stringify(window));
+          
+          //remove the first element from the tabs array -it has already been added to the window
+          tabs.splice(0,1);
+          console.log("tabs: " + JSON.stringify(tabs));
+          
+          moveTabs(tabs, window);
+          console.log("moveTabs done");
+  
+          //focus the window
+          chrome.windows.update(window.id,{focused:true});
+          console.log("window focused");
+    
+          //remember the URL pattern and the new window it was grouped into
+          urlsToGroup.push({"urlPattern":urlPattern,"window":window.id});
+          console.log("urlsToGroup: " + JSON.stringify(urlsToGroup));
+        });
       }
-      chrome.windows.update(window.id,{focused:true});
       
-      //remember the URL pattern and the window it was grouped into
-      urlsToGroup.push({"urlPattern":urlPattern,"window":window.id});
-      console.log(JSON.stringify(urlsToGroup));
-    });
-  });  
+      console.log("urlsToGroup(2): " + JSON.stringify(urlsToGroup));  });
+  });
+}
+
+/**
+ * Gets the window that a particular tab should be grouped into:
+ *
+ * 1. If a window exists for the passed match rule the callback is executed on that window
+ * 2. If there is an existing match rule but the window no longer exists a new window will be created
+ * 3. Otherwise return null
+ */
+function getTabWindow(tabUrl, callback) {
+  console.log("getTabWindow: " + tabUrl);
+  var match = false;
+  for (var i = 0; i < urlsToGroup.length; i++) {
+    var rule = urlsToGroup[i];
+    console.log("rule: " + JSON.stringify(rule));
+    if (matchRuleShort(tabUrl, rule.urlPattern)) {
+      //the new tab URL matches an existing group.
+      console.log("MATCH!");
+      match = true;
+      //check that the window still exists
+      chrome.windows.get(rule.window, {populate:true}, function(foundWindow){
+        if (foundWindow) {
+          console.log("FOUND! " + foundWindow);
+          callback(foundWindow);
+        } else {
+          //create a new window with the new tab
+          chrome.windows.create({"tabId":tab.id}, function(newWindow){
+            console.log("CREATED NEW! " + JSON.stringify(newWindow));
+
+            //reassign the group pattern to the new window
+            rule.window = newWindow.id
+            
+            callback(newWindow);
+          });
+        }
+      });
+      break;
+    }
+  }
+  
+  if (!match) {
+    callback(null);
+  }
+}
+
+/**
+ * Move an array of tabs to a destination window
+ */
+function moveTabs(tabs, destination) {
+  for (var i = 0; i < tabs.length; i++) {
+    var tab = tabs[i];
+    chrome.tabs.move(tab.id, {windowId:destination.id,index:-1});
+  }
 }
 
 /**
@@ -79,28 +154,48 @@ chrome.browserAction.onClicked.addListener(function() {
  * Add a listener for new tab events
  */
 chrome.tabs.onCreated.addListener(function(tabId, changeInfo, tab) {
+  console.log("chrome.tabs.onCreated");
   if (alwaysGroup) {
     newTabs.push(tabId.id);
   }
 });
 
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
+  console.log("chrome.tabs.onUpdated");
   if (alwaysGroup) {
+    console.log("alwaysGroup");
     //only group new tabs
     if (newTabs.indexOf(tabId) > -1) {
       for (var i = 0; i < urlsToGroup.length; i++) {
         var rule = urlsToGroup[i];
         if (matchRuleShort(changeInfo.url, rule.urlPattern)) {
           //the new tab URL matches an existing group.
+          console.log("match");
           
           //check that the window still exists
           chrome.windows.get(rule.window, {populate:true}, function(foundWindow){
             if (foundWindow) {
-              //open the new tab in the group window
-              chrome.tabs.move(tab.id, {windowId:foundWindow.id,index:-1});
+              console.log("foundWindow: " + JSON.stringify(foundWindow));
+              //Check for whether the new URL matches an existing tab
+              chrome.tabs.query({"url":changeInfo.url,"windowId":foundWindow.id},function(tabs){
+                console.log("chrome.tabs.query: " + JSON.stringify(tabs));
+                if (tabs.length > 0 && tabs[0].status === "complete") {
+                  //simply focus the existing tab with the same URL
+                  //TODO: Make this configurable
+                  focusTab(foundWindow, tabs[0]);
+                  
+                  //no need for the new tab
+                  chrome.tabs.remove(tab.id);
+                  
+                } else {
+                  //open the new tab in the group window
+                  chrome.tabs.move(tab.id, {windowId:foundWindow.id,index:-1});
+                  
+                  //focus the newly created tab
+                  focusTab(foundWindow, tab);
+                }
+              });
               
-              //focus the newly created tab
-              focusTab(foundWindow, tab);
             } else {
               //create a new window with the new tab
               chrome.windows.create({"tabId":tab.id}, function(newWindow){
@@ -122,6 +217,9 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
   }
 });
 
+/**
+ * Give focus to a particular tab
+ */
 function focusTab(window, tab) {
   chrome.windows.update(window.id,{focused:true});
   chrome.tabs.update(tab.id, {selected:true});
@@ -139,7 +237,8 @@ chrome.runtime.onInstalled.addListener(function() {
   chrome.contextMenus.create({"title": "Always Group New Tabs",
                               "contexts":["all"],
                               "id": "groupTabsAlways",
-                              "type": "checkbox"});
+                              "type": "checkbox",
+                              "checked": alwaysGroup});
 });
 
 /**
@@ -158,8 +257,7 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
  */ 
 function groupTabsContextOnClick(info, tab) {
   var regex = window.prompt('Enter URL regex to group (Use * for wildcard)', info.pageUrl);
-  
-  groupTabs(regex);  
+  if (regex) groupTabs(regex);  
 }
 
 /**
