@@ -1,6 +1,5 @@
 {
   "manifest_version": 2,
-
   "name": "GroupTabs",
   "description": "This extension groups all tabs from the same domain into one window",
   "icons": {
@@ -8,12 +7,17 @@
   },
   "version": "1.0",
   "background": {
-    "persistent": false,
-    "scripts": ["background.js"]
+    "persistent": true,
+    "scripts": ["background.js","scripts/jquery-3.2.1.min.js"]
   },
   "browser_action": {
     "default_icon": "icon.png",
     "default_title": "GroupTabs"
   },
-  "permissions": ["tabs","contextMenus"]
+  "options_ui": {
+    "page": "options.html",
+    "chrome_style": true,
+    "open_in_tab": true
+  },
+  "permissions": ["tabs","contextMenus","storage"]
 }

@@ -70,6 +70,7 @@ function groupTabs(urlPattern) {
     
           //remember the URL pattern and the new window it was grouped into
           urlsToGroup.push({"urlPattern":urlPattern,"window":window.id});
+          chrome.storage.local.set({"urlsToGroup":urlsToGroup});
           console.log("urlsToGroup: " + JSON.stringify(urlsToGroup));
         });
       }
@@ -87,6 +88,10 @@ function groupTabs(urlPattern) {
  */
 function getTabWindow(tabUrl, callback) {
   console.log("getTabWindow: " + tabUrl);
+  
+  //are we dealing with a new regex? 
+  
+  
   var match = false;
   for (var i = 0; i < urlsToGroup.length; i++) {
     var rule = urlsToGroup[i];
@@ -168,6 +173,10 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
     if (newTabs.indexOf(tabId) > -1) {
       for (var i = 0; i < urlsToGroup.length; i++) {
         var rule = urlsToGroup[i];
+        
+        //How do we distinguish between multiple match rules on the same domain? find the longest match rule? 
+        
+        
         if (matchRuleShort(changeInfo.url, rule.urlPattern)) {
           //the new tab URL matches an existing group.
           console.log("match");
@@ -175,14 +184,17 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
           //check that the window still exists
           chrome.windows.get(rule.window, {populate:true}, function(foundWindow){
             if (foundWindow) {
-              console.log("foundWindow: " + JSON.stringify(foundWindow));
+              console.log("foundWindow: " + foundWindow.id);
               //Check for whether the new URL matches an existing tab
               chrome.tabs.query({"url":changeInfo.url,"windowId":foundWindow.id},function(tabs){
                 console.log("chrome.tabs.query: " + JSON.stringify(tabs));
                 if (tabs.length > 0 && tabs[0].status === "complete") {
-                  //simply focus the existing tab with the same URL
+                  //focus the existing tab with the same URL
                   //TODO: Make this configurable
                   focusTab(foundWindow, tabs[0]);
+                  
+                  //reload to pick up new changes
+                  chrome.tabs.reload(tabs[0].id);                  
                   
                   //no need for the new tab
                   chrome.tabs.remove(tab.id);

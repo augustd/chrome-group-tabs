@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Group Tabs Options</title>
+  <style>
+    body { padding: 10px; }
+    div.win, div.patterns {margin: 10px; border: solid 1px; padding: 5px; background: #eaeef3;}
+    div.tab, div.pattern {margin: 1px; border: solid 1px; padding: 5px; background: #ffffff; position: relative }
+    div.winTitle {
+      margin-top: -6px;
+      margin-left: -6px;
+      margin-right: -6px;
+      margin-bottom: 5px;
+      border: solid 1px;
+      padding: 5px;
+      background: #5d7ca2;
+    }
+    .close {
+      display: none;
+      position: absolute;
+      right: 4px;
+      top: 4px;
+      z-index: 1000;
+      background-image: url("images/close-16.png");
+      width: 16px;
+      height: 16px;
+    }
+    .close:hover {
+      display: block;
+    }
+    .reload {
+      display: none;
+      position: absolute;
+      right: 22px;
+      top: 4px;
+      z-index: 1000;
+      background-image: url("images/reload-16.png");
+      width: 16px;
+      height: 16px;
+    }
+    .reload:hover {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  
+  <h1>Group Tabs</h1>
+  
+  <h3>Patterns:</h3>
+  <div id="patterns" class="patterns">
+    
+  </div>
+  
+  <h3>Open Windows:</h3>
+  <div id="windows">
+    
+  </div>
+  
+    <button id="save">Save</button>
+
+  <script src="scripts/jquery-3.2.1.min.js"></script>
+  <script src="options.js"></script>
+
+</body>
+</html>
