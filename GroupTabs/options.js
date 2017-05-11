@@ -21,6 +21,7 @@ function restore_options() {
         var window = winArray[i];
         var winUI = document.createElement('div');
         winUI.className = "win";
+        winUI.setAttribute("winId", window.id);
         
         var groupUrl = getUrlByWindowId(items.urlsToGroup, window.id);
         if (groupUrl) {
@@ -77,5 +78,13 @@ function getUrlByWindowId(urls, winId) {
         $('.tab').click(function(e) {
           chrome.windows.update(this.winid,{focused:true});
           chrome.tabs.update(this.tabid, {selected:true});
+        });
+        
+        chrome.tabs.onRemoved.addListener(function(tabId, removeInfo) {
+          $('.tab[tabId=' + tabId + ']').remove();
+        });
+        
+        chrome.windows.onRemoved.addListener(function(windowId) {
+          $('.win[winId=' + windowId + ']').remove();
         });
     });
