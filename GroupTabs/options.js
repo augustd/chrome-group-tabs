@@ -150,5 +150,15 @@ $(document).ready(function(){
     console.log("chrome.tabs.onUpdated");
     $('.tab[tabId=' + tabId + ']').find(".title").text(tab.title);
   });
+
+  chrome.tabs.onDetached.addListener(function(tabId, detachInfo){
+    $('.tab[tabId=' + tabId + ']').remove();
+  });
   
+  chrome.tabs.onAttached.addListener(function(tabId, attachInfo){
+    chrome.tabs.get(tabId, function(tab){
+      renderTab(tab);
+    });
+  });
+
 });
