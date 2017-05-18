@@ -90,7 +90,7 @@ function renderWindow(windowId) {
   windowsUI.appendChild(winUI);
 }
 
-function renderTab(tab) {
+function renderTab(tab, position) {
   var tabUI = document.createElement('div');
           
   tabUI.className = "tab";
@@ -119,7 +119,18 @@ function renderTab(tab) {
     $(this).find( ".reload" ).hide();
   });
   
-  $('.win[winId=' + tab.windowId + ']').append(tabUI);
+  //insert the new tab at the specified position
+  if (Number.isInteger(position)) {
+    if (position === 0) {
+       $('.win[winId=' + tab.windowId + ']').prepend(tabUI);        
+    } else {
+      $('.win[winId=' + tab.windowId + '] > div:nth-child(' + (position) + ')').after(tabUI);
+    } 
+  } else {
+    //no position specified, just add at the end
+    $('.win[winId=' + tab.windowId + ']').append(tabUI);
+  }
+  
 }
 
 $(document).ready(function(){
@@ -147,7 +158,6 @@ $(document).ready(function(){
   });
   
   chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
-    console.log("chrome.tabs.onUpdated");
     $('.tab[tabId=' + tabId + ']').find(".title").text(tab.title);
   });
 
@@ -157,7 +167,7 @@ $(document).ready(function(){
   
   chrome.tabs.onAttached.addListener(function(tabId, attachInfo){
     chrome.tabs.get(tabId, function(tab){
-      renderTab(tab);
+      renderTab(tab, attachInfo.newPosition);
     });
   });
 
