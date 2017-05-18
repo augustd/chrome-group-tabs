@@ -1,3 +1,5 @@
+var urlsToGroup;
+
 // Restores state using the preferences stored in chrome.storage.
 // generates list of windows and tabs
 function restore_options() {
@@ -5,6 +7,8 @@ function restore_options() {
   chrome.storage.local.get({
     'urlsToGroup': []
   }, function(items) {
+    
+    urlsToGroup = items.urlsToGroup;
     
     var patterns = document.getElementById('patterns');
     items.urlsToGroup.forEach(function(pattern){
@@ -35,7 +39,7 @@ function restore_options() {
           tabUI.className = "tab";
           tabUI.setAttribute("tabId", tab.id);
           tabUI.setAttribute("winId", window.id);
-          tabUI.innerHTML = tab.title + '<div class="reload"></div><div class="close"></div>';
+          tabUI.innerHTML = '<div class="title">' + tab.title + '</div><div class="reload"></div><div class="close"></div>';
           $(tabUI).click(function(){
             chrome.windows.update(parseInt($(this).attr('winid')),{focused:true});
             chrome.tabs.update(parseInt($(this).attr('tabid')), {selected:true});
@@ -73,18 +77,78 @@ function getUrlByWindowId(urls, winId) {
   return array[0];
 }
 
-    $(document).ready(function(){
-      restore_options();
-        $('.tab').click(function(e) {
-          chrome.windows.update(this.winid,{focused:true});
-          chrome.tabs.update(this.tabid, {selected:true});
-        });
-        
-        chrome.tabs.onRemoved.addListener(function(tabId, removeInfo) {
-          $('.tab[tabId=' + tabId + ']').remove();
-        });
-        
-        chrome.windows.onRemoved.addListener(function(windowId) {
-          $('.win[winId=' + windowId + ']').remove();
-        });
+function renderWindow(windowId) {
+  var windowsUI = document.getElementById('windows');
+  var winUI = document.createElement('div');
+  winUI.className = "win";
+  winUI.setAttribute("winId", windowId);
+  
+  var groupUrl = getUrlByWindowId(urlsToGroup, windowId);
+  if (groupUrl) {
+    winUI.innerHTML = '<div class="winTitle">Grouped Window - pattern: ' + groupUrl.urlPattern + '</div>';
+  }
+  windowsUI.appendChild(winUI);
+}
+
+function renderTab(tab) {
+  var tabUI = document.createElement('div');
+          
+  tabUI.className = "tab";
+  tabUI.setAttribute("tabId", tab.id);
+  tabUI.setAttribute("winId", tab.windowId);
+  tabUI.innerHTML = '<div class="title">' + tab.title + '</div><div class="reload"></div><div class="close"></div>';
+  $(tabUI).click(function(){
+    chrome.windows.update(parseInt($(this).attr('winid')),{focused:true});
+    chrome.tabs.update(parseInt($(this).attr('tabid')), {selected:true});
+  });
+  
+  $(tabUI).hover(function(){
+    $(this).find( ".close" ).show().click(function() {
+      chrome.tabs.remove(parseInt($(this).parent().attr('tabid')));
+      if ($(this).parent().parent().children().length > 1) {
+        $(this).parent().remove(); //remove the one tab UI
+      } else {
+        $(this).parent().parent().remove(); //remove the whole window UI
+      }
     });
+    $(this).find( ".reload" ).show().click(function() {
+      chrome.tabs.reload(parseInt($(this).parent().attr('tabid')));
+    });
+  },function(){
+    $(this).find( ".close" ).hide();
+    $(this).find( ".reload" ).hide();
+  });
+  
+  $('.win[winId=' + tab.windowId + ']').append(tabUI);
+}
+
+$(document).ready(function(){
+  restore_options();
+  
+  $('.tab').click(function(e) {
+    chrome.windows.update(this.winid,{focused:true});
+    chrome.tabs.update(this.tabid, {selected:true});
+  });
+  
+  chrome.tabs.onRemoved.addListener(function(tabId, removeInfo) {
+    $('.tab[tabId=' + tabId + ']').remove();
+  });
+  
+  chrome.windows.onRemoved.addListener(function(windowId) {
+    $('.win[winId=' + windowId + ']').remove();
+  });
+  
+  chrome.windows.onCreated.addListener(function(window){
+    renderWindow(window.id);
+  });
+  
+  chrome.tabs.onCreated.addListener(function(tab){
+    renderTab(tab);
+  });
+  
+  chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
+    console.log("chrome.tabs.onUpdated");
+    $('.tab[tabId=' + tabId + ']').find(".title").text(tab.title);
+  });
+  
+});
