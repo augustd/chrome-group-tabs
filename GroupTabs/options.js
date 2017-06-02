@@ -91,6 +91,7 @@ function renderWindow(windowId) {
 }
 
 function renderTab(tab, position) {
+  console.log('rendering new tab at position: ' + position);
   var tabUI = document.createElement('div');
           
   tabUI.className = "tab";
@@ -121,6 +122,9 @@ function renderTab(tab, position) {
   
   //insert the new tab at the specified position
   if (Number.isInteger(position)) {
+    //account for extra div in grouped windows
+    if ($('.win[winId=' + tab.windowId + '] > div.winTitle')) position++;
+    
     if (position === 0) {
        $('.win[winId=' + tab.windowId + ']').prepend(tabUI);        
     } else {
@@ -167,6 +171,7 @@ $(document).ready(function(){
   
   chrome.tabs.onAttached.addListener(function(tabId, attachInfo){
     chrome.tabs.get(tabId, function(tab){
+      console.log('tab attached at position: ' + attachInfo.newPosition);
       renderTab(tab, attachInfo.newPosition);
     });
   });
