@@ -145,6 +145,24 @@ $(document).ready(function(){
     chrome.tabs.update(this.tabid, {selected:true});
   });
   
+  $('#groupThis').click(function(){
+    getCurrentTabDomain(function(domain) {
+      var urlPattern = "*://" + domain + "/*";
+      groupTabs(urlPattern);
+    });
+  });
+  
+  $('#groupRegexShow').click(function(){
+    $('#groupRegexForm').toggle();
+  });
+  $('#groupRegexForm').submit(function(event) {
+    event.preventDefault();
+    alert( "Handler for .submit() called." + $('#groupRegexInput').val());
+    console.log("Handler for .submit() called." + $('#groupRegexInput').val());
+    //console.log("submit");
+    groupTabs($('#groupRegexInput').val());
+  });
+
   chrome.tabs.onRemoved.addListener(function(tabId, removeInfo) {
     $('.tab[tabId=' + tabId + ']').remove();
   });

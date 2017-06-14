@@ -53,12 +53,12 @@ function groupTabs(urlPattern) {
         
       } else {
         //no existing window for this pattern so create a new window
-        chrome.windows.create({tabId:tabs[0].id}, function(window){
+        chrome.windows.create({}, function(window){
   
           console.log("window: " + JSON.stringify(window));
           
           //remove the first element from the tabs array -it has already been added to the window
-          tabs.splice(0,1);
+          //tabs.splice(0,1);
           console.log("tabs: " + JSON.stringify(tabs));
           
           moveTabs(tabs, window);
@@ -148,12 +148,14 @@ function matchRuleShort(str, rule) {
  * 
  * Causes all tabs from the current domain to be grouped into one window
  */
+/*
 chrome.browserAction.onClicked.addListener(function() {
   getCurrentTabDomain(function(domain) {
     var urlPattern = "*://" + domain + "/*";
     groupTabs(urlPattern);
   });
 });
+*/
 
 /**
  * Add a listener for new tab events
@@ -258,7 +260,7 @@ chrome.runtime.onInstalled.addListener(function() {
  */
 chrome.contextMenus.onClicked.addListener(function(info, tab) {
     if (info.menuItemId === "groupTabsContext") { 
-      groupTabsContextOnClick(info, tab)
+      groupTabsContextOnClick(info.pageUrl, tab)
     } else if (info.menuItemId === "groupTabsAlways") {
       groupTabsAlwaysOnClick(info,tab);
     }
@@ -267,8 +269,8 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
 /**
  * Callback function activated when the context menu item is clicked
  */ 
-function groupTabsContextOnClick(info, tab) {
-  var regex = window.prompt('Enter URL regex to group (Use * for wildcard)', info.pageUrl);
+function groupTabsContextOnClick(pageUrl, tab) {
+  var regex = window.prompt('Enter URL regex to group (Use * for wildcard)', pageUrl);
   if (regex) groupTabs(regex);  
 }
 
