@@ -39,6 +39,8 @@ function restore_options() {
           tabUI.className = "tab";
           tabUI.setAttribute("tabId", tab.id);
           tabUI.setAttribute("winId", window.id);
+          tabUI.setAttribute("url", tab.url);
+          tabUI.setAttribute("title", tab.title);
           tabUI.innerHTML = '<div class="title">' + tab.title + '</div><div class="reload"></div><div class="close"></div>';
           $(tabUI).click(function(){
             chrome.windows.update(parseInt($(this).attr('winid')),{focused:true});
@@ -97,6 +99,8 @@ function renderTab(tab, position) {
   tabUI.className = "tab";
   tabUI.setAttribute("tabId", tab.id);
   tabUI.setAttribute("winId", tab.windowId);
+  tabUI.setAttribute("url", tab.url);
+  tabUI.setAttribute("title", tab.title);
   tabUI.innerHTML = '<div class="title">' + tab.title + '</div><div class="reload"></div><div class="close"></div>';
   $(tabUI).click(function(){
     chrome.windows.update(parseInt($(this).attr('winid')),{focused:true});
@@ -162,7 +166,33 @@ $(document).ready(function(){
     //console.log("submit");
     groupTabs($('#groupRegexInput').val());
   });
+  
+  $('#search-criteria').on('change', function() {
+    var val = $(this).val();
+    $('.win').children(':not(:icontains(' + val + '))').hide().parent().hide();
+    $('.win').children(':icontains(' + val + ')').show().parent().show();
+  }).on('keyup', function() {
+    $(this).change();
+  });
 
+  $.expr[":"].icontains = $.expr.createPseudo(function(arg) {
+    return function (elem) {
+      var elemAttrUrl = $(elem).attr('url');
+      var elemAttrTitle = $(elem).attr('url');
+      var elemAttrUrlContains = false;
+      if (elemAttrUrl) {
+        elemAttrUrlContains = elemAttrUrl.toUpperCase().indexOf(arg.toUpperCase()) >= 0;
+        //console.log(elemAttrUrl + " contains? " + elemAttrUrlContains);
+      }
+      var elemAttrTitleContains = false;
+      if (elemAttrTitle) {
+        elemAttrTitleContains = elemAttrTitle.toUpperCase().indexOf(arg.toUpperCase()) >= 0;
+        //console.log(elemAttrTitle + " contains? " + elemAttrTitleContains);
+      }
+      return elemAttrUrlContains || elemAttrTitleContains;
+    };
+  });
+  
   chrome.tabs.onRemoved.addListener(function(tabId, removeInfo) {
     $('.tab[tabId=' + tabId + ']').remove();
   });
