@@ -108,13 +108,14 @@ function renderTab(tab, position) {
   });
   
   $(tabUI).hover(function(){
-    $(this).find( ".close" ).show().click(function() {
+    $(this).find( ".close" ).show().click(function(event) {
       chrome.tabs.remove(parseInt($(this).parent().attr('tabid')));
       if ($(this).parent().parent().children().length > 1) {
         $(this).parent().remove(); //remove the one tab UI
       } else {
         $(this).parent().parent().remove(); //remove the whole window UI
       }
+      event.stopPropagation();
     });
     $(this).find( ".reload" ).show().click(function() {
       chrome.tabs.reload(parseInt($(this).parent().attr('tabid')));
