@@ -3,7 +3,6 @@ var urlsToGroup;
 // Restores state using the preferences stored in chrome.storage.
 // generates list of windows and tabs
 function restore_options() {
-  // Use default value color = 'red' and likesColor = true.
   chrome.storage.local.get({
     'urlsToGroup': []
   }, function(items) {

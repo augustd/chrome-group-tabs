@@ -107,11 +107,12 @@ function getTabWindow(tabUrl, callback) {
           callback(foundWindow);
         } else {
           //create a new window with the new tab
-          chrome.windows.create({"tabId":tab.id}, function(newWindow){
+          chrome.windows.create({}, function(newWindow){ //"tabId":tab.id
             console.log("CREATED NEW! " + JSON.stringify(newWindow));
 
             //reassign the group pattern to the new window
             rule.window = newWindow.id
+            chrome.storage.local.set({"urlsToGroup":urlsToGroup});
             
             callback(newWindow);
           });
@@ -173,57 +174,60 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
     console.log("alwaysGroup");
     //only group new tabs
     if (newTabs.indexOf(tabId) > -1) {
-      for (var i = 0; i < urlsToGroup.length; i++) {
-        var rule = urlsToGroup[i];
-        
-        //How do we distinguish between multiple match rules on the same domain? find the longest match rule? 
-        
-        
-        if (matchRuleShort(changeInfo.url, rule.urlPattern)) {
-          //the new tab URL matches an existing group.
-          console.log("match");
+      chrome.storage.local.get({urlsToGroup: []}, function(items) {
+        urlsToGroup = items.urlsToGroup;
+        for (var i = 0; i < urlsToGroup.length; i++) {
+          var rule = urlsToGroup[i];
           
-          //check that the window still exists
-          chrome.windows.get(rule.window, {populate:true}, function(foundWindow){
-            if (foundWindow) {
-              console.log("foundWindow: " + foundWindow.id);
-              //Check for whether the new URL matches an existing tab
-              chrome.tabs.query({"url":changeInfo.url,"windowId":foundWindow.id},function(tabs){
-                console.log("chrome.tabs.query: " + JSON.stringify(tabs));
-                if (tabs.length > 0 && tabs[0].status === "complete") {
-                  //focus the existing tab with the same URL
-                  //TODO: Make this configurable
-                  focusTab(foundWindow, tabs[0]);
-                  
-                  //reload to pick up new changes
-                  chrome.tabs.reload(tabs[0].id);                  
-                  
-                  //no need for the new tab
-                  chrome.tabs.remove(tab.id);
-                  
-                } else {
-                  //open the new tab in the group window
-                  chrome.tabs.move(tab.id, {windowId:foundWindow.id,index:-1});
-                  
+          //How do we distinguish between multiple match rules on the same domain? find the longest match rule? 
+          
+          
+          if (matchRuleShort(changeInfo.url, rule.urlPattern)) {
+            //the new tab URL matches an existing group.
+            console.log("match");
+            
+            //check that the window still exists
+            chrome.windows.get(rule.window, {populate:true}, function(foundWindow){
+              if (foundWindow) {
+                console.log("foundWindow: " + foundWindow.id);
+                //Check for whether the new URL matches an existing tab
+                chrome.tabs.query({"url":changeInfo.url,"windowId":foundWindow.id},function(tabs){
+                  console.log("chrome.tabs.query: " + JSON.stringify(tabs));
+                  if (tabs.length > 0 && tabs[0].status === "complete") {
+                    //focus the existing tab with the same URL
+                    //TODO: Make this configurable
+                    focusTab(foundWindow, tabs[0]);
+                    
+                    //reload to pick up new changes
+                    chrome.tabs.reload(tabs[0].id);                  
+                    
+                    //no need for the new tab
+                    chrome.tabs.remove(tab.id);
+                    
+                  } else {
+                    //open the new tab in the group window
+                    chrome.tabs.move(tab.id, {windowId:foundWindow.id,index:-1});
+                    
+                    //focus the newly created tab
+                    focusTab(foundWindow, tab);
+                  }
+                });
+                
+              } else {
+                //create a new window with the new tab
+                chrome.windows.create({"tabId":tab.id}, function(newWindow){
+                  //reassign the group pattern to the new window
+                  rule.window = newWindow.id
+                  console.log(JSON.stringify(urlsToGroup));
+    
                   //focus the newly created tab
-                  focusTab(foundWindow, tab);
-                }
-              });
-              
-            } else {
-              //create a new window with the new tab
-              chrome.windows.create({"tabId":tab.id}, function(newWindow){
-                //reassign the group pattern to the new window
-                rule.window = newWindow.id
-                console.log(JSON.stringify(urlsToGroup));
-  
-                //focus the newly created tab
-                focusTab(newWindow, tab);
-              });
-            }
-          });
+                  focusTab(newWindow, tab);
+                });
+              }
+            });
+          }
         }
-      }
+      });
       
       //this is no longer a new tab
       newTabs.splice(newTabs.indexOf(tab.id), 1);
