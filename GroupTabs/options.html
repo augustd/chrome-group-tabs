@@ -3,7 +3,7 @@
 <head>
   <title>Group Tabs Options</title>
   <style>
-    body { padding: 10px; }
+    body { padding: 10px; min-width: 400px; }
     div.win, div.patterns {margin: 10px; border: solid 1px; padding: 5px; background: #eaeef3;}
     div.tab, div.pattern {margin: 1px; border: solid 1px; padding: 5px; background: #ffffff; position: relative }
     div.winTitle {
@@ -48,27 +48,27 @@
 </head>
 
 <body>
-  
+
   <h1>Group Tabs</h1>
-  
+
   <a id="groupThis">[Quick group domain]</a> <a id="groupRegexShow">[Custom group]</a>
   <form id="groupRegexForm">
     <input id="groupRegexInput" type="text" name="groupRegexInput">
     <input type="submit" name="submit" value="&gt;">
   </form>
-  
-  
+
+
   <h3>Patterns:</h3>
   <div id="patterns" class="patterns">
-    
+
   </div>
-  
+
   <h3>Open Windows:</h3>
   <div>Search: <input id="search-criteria" type="text"></div>
   <div id="windows">
-    
+
   </div>
-  
+
   <script src="scripts/jquery-3.2.1.min.js"></script>
   <script src="options.js"></script>
   <script src="background.js"></script>
