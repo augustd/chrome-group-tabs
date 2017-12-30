@@ -25,58 +25,71 @@ function getCurrentTabDomain(callback) {
 
     // Get the tab URL
     var url = tab.url;
-    
+
     //get the domain from the URL
     var domain = url.match(/^[\w-]+:\/{2,}\[?([\w\.:-]+)\]?(?::[0-9]*)?/)[1];
 
     callback(domain);
   });
 }
-  
+
 /**
  * Groups all tabs with URLs matching a pattern into the same window
  */
 function groupTabs(urlPattern) {
-  console.log("groupTabs: " + urlPattern); 
-  
+  console.log("groupTabs: " + urlPattern);
+
   //check if we already have a window for this pattern
   getTabWindow(urlPattern, function(tabWindow){
     console.log("groupTabs: tabWindow: " + JSON.stringify(tabWindow));
-    
+
     //get the tabs that match the URL pattern
     chrome.tabs.query({url:urlPattern}, function(tabs) {
       if (tabWindow) {
         moveTabs(tabs, tabWindow);
-        
+
         //focus the window
         chrome.windows.update(tabWindow.id,{focused:true});
-        
+
       } else {
         //no existing window for this pattern so create a new window
         chrome.windows.create({}, function(window){
-  
+
           console.log("window: " + JSON.stringify(window));
-          
+
           //remove the first element from the tabs array -it has already been added to the window
           //tabs.splice(0,1);
           console.log("tabs: " + JSON.stringify(tabs));
-          
+
           moveTabs(tabs, window);
           console.log("moveTabs done");
-  
+
           //focus the window
           chrome.windows.update(window.id,{focused:true});
           console.log("window focused");
-    
+
           //remember the URL pattern and the new window it was grouped into
           urlsToGroup.push({"urlPattern":urlPattern,"window":window.id});
           chrome.storage.local.set({"urlsToGroup":urlsToGroup});
           console.log("urlsToGroup: " + JSON.stringify(urlsToGroup));
         });
       }
-      
+
       console.log("urlsToGroup(2): " + JSON.stringify(urlsToGroup));  });
   });
+}
+
+function removeGroup(urlPattern) {
+    chrome.storage.local.get({urlsToGroup: []}, function(items) {
+      const index = items.urlsToGroup.indexOf(urlPattern);
+      console.log("removeGroup(" + urlPattern + "): index: " + index);
+
+      if (index !== -1) {
+          items.urlsToGroup.splice(index, 1);
+      }
+      chrome.storage.local.set({"urlsToGroup":items.urlsToGroup});
+      console.log("removeGroup(): " + JSON.stringify(items.urlsToGroup));
+    });
 }
 
 /**
@@ -88,10 +101,10 @@ function groupTabs(urlPattern) {
  */
 function getTabWindow(tabUrl, callback) {
   console.log("getTabWindow: " + tabUrl);
-  
-  //are we dealing with a new regex? 
-  
-  
+
+  //are we dealing with a new regex?
+
+
   var match = false;
   for (var i = 0; i < urlsToGroup.length; i++) {
     var rule = urlsToGroup[i];
@@ -113,7 +126,7 @@ function getTabWindow(tabUrl, callback) {
             //reassign the group pattern to the new window
             rule.window = newWindow.id
             chrome.storage.local.set({"urlsToGroup":urlsToGroup});
-            
+
             callback(newWindow);
           });
         }
@@ -121,7 +134,7 @@ function getTabWindow(tabUrl, callback) {
       break;
     }
   }
-  
+
   if (!match) {
     callback(null);
   }
@@ -146,7 +159,7 @@ function matchRuleShort(str, rule) {
 
 /**
  * Click handler action for the main extension button.
- * 
+ *
  * Causes all tabs from the current domain to be grouped into one window
  */
 /*
@@ -178,14 +191,14 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
         urlsToGroup = items.urlsToGroup;
         for (var i = 0; i < urlsToGroup.length; i++) {
           var rule = urlsToGroup[i];
-          
-          //How do we distinguish between multiple match rules on the same domain? find the longest match rule? 
-          
-          
+
+          //How do we distinguish between multiple match rules on the same domain? find the longest match rule?
+
+
           if (matchRuleShort(changeInfo.url, rule.urlPattern)) {
             //the new tab URL matches an existing group.
             console.log("match");
-            
+
             //check that the window still exists
             chrome.windows.get(rule.window, {populate:true}, function(foundWindow){
               if (foundWindow) {
@@ -197,29 +210,29 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
                     //focus the existing tab with the same URL
                     //TODO: Make this configurable
                     focusTab(foundWindow, tabs[0]);
-                    
+
                     //reload to pick up new changes
-                    chrome.tabs.reload(tabs[0].id);                  
-                    
+                    chrome.tabs.reload(tabs[0].id);
+
                     //no need for the new tab
                     chrome.tabs.remove(tab.id);
-                    
+
                   } else {
                     //open the new tab in the group window
                     chrome.tabs.move(tab.id, {windowId:foundWindow.id,index:-1});
-                    
+
                     //focus the newly created tab
                     focusTab(foundWindow, tab);
                   }
                 });
-                
+
               } else {
                 //create a new window with the new tab
                 chrome.windows.create({"tabId":tab.id}, function(newWindow){
                   //reassign the group pattern to the new window
                   rule.window = newWindow.id
                   console.log(JSON.stringify(urlsToGroup));
-    
+
                   //focus the newly created tab
                   focusTab(newWindow, tab);
                 });
@@ -228,7 +241,7 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
           }
         }
       });
-      
+
       //this is no longer a new tab
       newTabs.splice(newTabs.indexOf(tab.id), 1);
     }
@@ -263,7 +276,7 @@ chrome.runtime.onInstalled.addListener(function() {
  * Click handler for context menu items.
  */
 chrome.contextMenus.onClicked.addListener(function(info, tab) {
-    if (info.menuItemId === "groupTabsContext") { 
+    if (info.menuItemId === "groupTabsContext") {
       groupTabsContextOnClick(info.pageUrl, tab)
     } else if (info.menuItemId === "groupTabsAlways") {
       groupTabsAlwaysOnClick(info,tab);
@@ -272,15 +285,15 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
 
 /**
  * Callback function activated when the context menu item is clicked
- */ 
+ */
 function groupTabsContextOnClick(pageUrl, tab) {
   var regex = window.prompt('Enter URL regex to group (Use * for wildcard)', pageUrl);
-  if (regex) groupTabs(regex);  
+  if (regex) groupTabs(regex);
 }
 
 /**
  * Callback function activated when the context menu item is clicked
- */ 
+ */
 function groupTabsAlwaysOnClick(info, tab) {
   alwaysGroup = info.checked;
 }
