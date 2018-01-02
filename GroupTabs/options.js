@@ -198,7 +198,7 @@ $(document).ready(function(){
   $.expr[":"].icontains = $.expr.createPseudo(function(arg) {
     return function (elem) {
       var elemAttrUrl = $(elem).attr('url');
-      var elemAttrTitle = $(elem).attr('url');
+      var elemAttrTitle = $(elem).attr('title');
       var elemAttrUrlContains = false;
       if (elemAttrUrl) {
         elemAttrUrlContains = elemAttrUrl.toUpperCase().indexOf(arg.toUpperCase()) >= 0;
