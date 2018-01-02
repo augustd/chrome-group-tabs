@@ -3,7 +3,7 @@
 <head>
   <title>Group Tabs Options</title>
   <style>
-    body { padding: 10px; min-width: 400px; }
+    body { padding: 10px; min-width: 400px !important; min-height: 400px !important; }
     div.win, div.patterns {margin: 10px; border: solid 1px; padding: 5px; background: #eaeef3;}
     div.tab, div.pattern {margin: 1px; border: solid 1px; padding: 5px; background: #ffffff; position: relative }
     div.winTitle {
@@ -44,6 +44,9 @@
     #groupRegexForm {
       display: none;
     }
+    #windows {
+      display: none;
+    }
   </style>
 </head>
 
@@ -58,16 +61,12 @@
   </form>
 
 
-  <h3>Patterns:</h3>
-  <div id="patterns" class="patterns">
-
-  </div>
+  <h3>Grouped Patterns:</h3>
+  <div id="patterns" class="patterns"></div>
 
   <h3>Open Windows:</h3>
   <div>Search: <input id="search-criteria" type="text"></div>
-  <div id="windows">
-
-  </div>
+  <div id="windows"></div>
 
   <script src="scripts/jquery-3.2.1.min.js"></script>
   <script src="options.js"></script>

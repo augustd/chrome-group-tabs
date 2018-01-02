@@ -37,7 +37,7 @@ function restore_options() {
       patterns.appendChild(patternUI);
     });
 
-    //pupulate the UI with a list of all windows
+    //populate the UI with a list of all windows
     var windowsUI = document.getElementById('windows');
     chrome.windows.getAll({'populate':true},function(winArray) {
       for (var i = 0; i < winArray.length; i++) {
@@ -88,6 +88,7 @@ function restore_options() {
 
         windowsUI.appendChild(winUI);
       }
+      setTimeout(function(){$("#windows").slideDown(50)}, 50); //prevent window initial scroll bug
     });
   });
 
@@ -112,7 +113,7 @@ function renderWindow(windowId) {
 }
 
 function renderTab(tab, position) {
-  console.log('rendering new tab at position: ' + position);
+  chrome.extension.getBackgroundPage().console.log('rendering new tab at position: ' + position);
   var tabUI = document.createElement('div');
 
   tabUI.className = "tab";
@@ -182,8 +183,7 @@ $(document).ready(function(){
   $('#groupRegexForm').submit(function(event) {
     event.preventDefault();
     alert( "Handler for .submit() called." + $('#groupRegexInput').val());
-    console.log("Handler for .submit() called." + $('#groupRegexInput').val());
-    //console.log("submit");
+    chrome.extension.getBackgroundPage().console.log("Handler for .submit() called." + $('#groupRegexInput').val());
     groupTabs($('#groupRegexInput').val());
   });
 
@@ -202,12 +202,10 @@ $(document).ready(function(){
       var elemAttrUrlContains = false;
       if (elemAttrUrl) {
         elemAttrUrlContains = elemAttrUrl.toUpperCase().indexOf(arg.toUpperCase()) >= 0;
-        //console.log(elemAttrUrl + " contains? " + elemAttrUrlContains);
       }
       var elemAttrTitleContains = false;
       if (elemAttrTitle) {
         elemAttrTitleContains = elemAttrTitle.toUpperCase().indexOf(arg.toUpperCase()) >= 0;
-        //console.log(elemAttrTitle + " contains? " + elemAttrTitleContains);
       }
       return elemAttrUrlContains || elemAttrTitleContains;
     };
@@ -239,9 +237,8 @@ $(document).ready(function(){
 
   chrome.tabs.onAttached.addListener(function(tabId, attachInfo){
     chrome.tabs.get(tabId, function(tab){
-      console.log('tab attached at position: ' + attachInfo.newPosition);
+      chrome.extension.getBackgroundPage().console.log('tab attached at position: ' + attachInfo.newPosition);
       renderTab(tab, attachInfo.newPosition);
     });
   });
-
 });
