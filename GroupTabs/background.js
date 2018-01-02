@@ -81,14 +81,14 @@ function groupTabs(urlPattern) {
 
 function removeGroup(urlPattern) {
     chrome.storage.local.get({urlsToGroup: []}, function(items) {
-      const index = items.urlsToGroup.indexOf(urlPattern);
-      console.log("removeGroup(" + urlPattern + "): index: " + index);
+      console.log("removeGroup(" + urlPattern + ")");
+      var newUrls = items.urlsToGroup.filter(function(el) {
+        console.log("el: " + JSON.stringify(el));
+        return el.urlPattern != urlPattern;
+      });
 
-      if (index !== -1) {
-          items.urlsToGroup.splice(index, 1);
-      }
-      chrome.storage.local.set({"urlsToGroup":items.urlsToGroup});
-      console.log("removeGroup(): " + JSON.stringify(items.urlsToGroup));
+      chrome.storage.local.set({"urlsToGroup":newUrls});
+      console.log("removeGroup(): " + JSON.stringify(newUrls));
     });
 }
 
