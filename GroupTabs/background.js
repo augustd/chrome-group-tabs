@@ -227,17 +227,21 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
                 });
 
               } else {
+                console.log("NOT foundWindow");
                 //create a new window with the new tab
                 chrome.windows.create({"tabId":tab.id}, function(newWindow){
+                  console.log("New window created: " + newWindow.id);
                   //reassign the group pattern to the new window
                   rule.window = newWindow.id
                   console.log(JSON.stringify(urlsToGroup));
+                  chrome.storage.local.set({"urlsToGroup":urlsToGroup});
 
                   //focus the newly created tab
                   focusTab(newWindow, tab);
                 });
               }
             });
+            break;
           }
         }
       });
