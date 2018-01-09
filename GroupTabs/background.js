@@ -204,7 +204,8 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
               if (foundWindow) {
                 console.log("foundWindow: " + foundWindow.id);
                 //Check for whether the new URL matches an existing tab
-                chrome.tabs.query({"url":changeInfo.url,"windowId":foundWindow.id},function(tabs){
+                var searchUrl = changeInfo.url.split('#')[0];  //remove fragment for proper search matching
+                chrome.tabs.query({"url":searchUrl,"windowId":foundWindow.id},function(tabs){
                   console.log("chrome.tabs.query: " + JSON.stringify(tabs));
                   if (tabs.length > 0 && tabs[0].status === "complete") {
                     //focus the existing tab with the same URL
