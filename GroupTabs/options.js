@@ -60,7 +60,9 @@ function restore_options() {
           tabUI.setAttribute("winId", window.id);
           tabUI.setAttribute("url", tab.url);
           tabUI.setAttribute("title", tab.title);
-          tabUI.innerHTML = '<div class="title">' + tab.title + '</div><div class="reload"></div><div class="close"></div>';
+          console.log(tab);
+          //this renders the actual tab
+          tabUI.innerHTML = '<img src="' + tab.favIconUrl + '" class="fav"><div class="title">' + tab.title + '</div><div class="reload"></div><div class="close"></div>';
           $(tabUI).click(function(){
             chrome.windows.update(parseInt($(this).attr('winid')),{focused:true});
             chrome.tabs.update(parseInt($(this).attr('tabid')), {selected:true});
@@ -121,7 +123,7 @@ function renderTab(tab, position) {
   tabUI.setAttribute("winId", tab.windowId);
   tabUI.setAttribute("url", tab.url);
   tabUI.setAttribute("title", tab.title);
-  tabUI.innerHTML = '<div class="title">' + tab.title + '</div><div class="reload"></div><div class="close"></div>';
+  tabUI.innerHTML = '<div class="title"><img src="' + tab.favIconUrl + '" style="fav">' + tab.title + '</div><div class="reload"></div><div class="close"></div>';
   $(tabUI).click(function(){
     chrome.windows.update(parseInt($(this).attr('winid')),{focused:true});
     chrome.tabs.update(parseInt($(this).attr('tabid')), {selected:true});
