@@ -53,7 +53,8 @@ function groupTabs(urlPattern) {
 
       } else {
         //no existing window for this pattern so create a new window
-        chrome.windows.create({}, function(window){
+        var tabId = (tabs.length > 0) ? tabs[0].id : null;
+        chrome.windows.create({"tabId":tabId}, function(window){
 
           console.log("window: " + JSON.stringify(window));
 
