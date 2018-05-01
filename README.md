@@ -1,4 +1,4 @@
-# chrome-group-tabs
+# Group Tabs Extension for Chrome
 
 This Chrome extension provides features for tab management
 
