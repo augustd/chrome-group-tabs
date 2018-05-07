@@ -183,7 +183,7 @@ chrome.tabs.onCreated.addListener(function(tabId, changeInfo, tab) {
 });
 
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
-  console.log("chrome.tabs.onUpdated");
+  console.log("chrome.tabs.onUpdated: status: " + changeInfo.status + " url: " + changeInfo.url);
   if (alwaysGroup) {
     console.log("alwaysGroup");
     //only group new tabs
@@ -193,7 +193,7 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
         for (var i = 0; i < urlsToGroup.length; i++) {
           var rule = urlsToGroup[i];
 
-          //How do we distinguish between multiple match rules on the same domain? find the longest match rule?
+          //TODO: How do we distinguish between multiple match rules on the same domain? find the longest match rule?
 
 
           if (matchRuleShort(changeInfo.url, rule.urlPattern)) {
@@ -206,6 +206,9 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
                 console.log("foundWindow: " + foundWindow.id);
                 //Check for whether the new URL matches an existing tab
                 var searchUrl = changeInfo.url.split('#')[0];  //remove fragment for proper search matching
+
+                //TODO: how do we handle GET query params on the same URL? For example, ?ts=78123768
+
                 chrome.tabs.query({"url":searchUrl,"windowId":foundWindow.id},function(tabs){
                   console.log("chrome.tabs.query: " + JSON.stringify(tabs));
                   if (tabs.length > 0 && tabs[0].status === "complete") {
