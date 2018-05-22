@@ -26,7 +26,8 @@ function restore_options() {
           }
         });
         $(this).find( ".reload" ).show().click(function() {
-          chrome.tabs.reload(parseInt($(this).parent().attr('tabid')));
+          //regroup this pattern
+          groupTabs(pattern.urlPattern);
         });
       },function(){
         $(this).find( ".close" ).hide();
