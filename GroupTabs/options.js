@@ -196,7 +196,7 @@ $(document).ready(function(){
     $('.win').children(':icontains(' + val + ')').show().parent().show();
   }).on('keyup', function() {
     $(this).change();
-  });
+  }).focus();
 
   $.expr[":"].icontains = $.expr.createPseudo(function(arg) {
     return function (elem) {
