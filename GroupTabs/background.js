@@ -184,10 +184,10 @@ chrome.tabs.onCreated.addListener(function(tabId, changeInfo, tab) {
 
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
   console.log("chrome.tabs.onUpdated: status: " + changeInfo.status + " url: " + changeInfo.url);
-  if (alwaysGroup) {
+  if (alwaysGroup && typeof changeInfo.url != 'undefined') {
     console.log("alwaysGroup");
     //only group new tabs
-    if (newTabs.indexOf(tabId) > -1) {
+    //if (newTabs.indexOf(tabId) > -1) {
       chrome.storage.local.get({urlsToGroup: []}, function(items) {
         urlsToGroup = items.urlsToGroup;
         for (var i = 0; i < urlsToGroup.length; i++) {
@@ -205,23 +205,36 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
               if (foundWindow) {
                 console.log("foundWindow: " + foundWindow.id);
                 //Check for whether the new URL matches an existing tab
-                var searchUrl = changeInfo.url.split('#')[0];  //remove fragment for proper search matching
+                //separate fragment for proper search matching
+                var searchUrl  = changeInfo.url.split('#')[0];
+                var searchFrag = changeInfo.url.split('#')[1];
+                console.log("searchFrag: " + searchFrag);
 
                 //TODO: how do we handle GET query params on the same URL? For example, ?ts=78123768
 
+                console.log("chrome.tabs.query() params: " + searchUrl);
                 chrome.tabs.query({"url":searchUrl,"windowId":foundWindow.id},function(tabs){
-                  console.log("chrome.tabs.query: " + JSON.stringify(tabs));
+                  console.log("chrome.tabs.query() result: " + JSON.stringify(tabs));
                   if (tabs.length > 0 && tabs[0].status === "complete") {
-                    //focus the existing tab with the same URL
-                    //TODO: Make this configurable
-                    focusTab(foundWindow, tabs[0]);
+                    for (foundTab in tabs) {
+                      console.log("checking foundTab: " + foundTab.url);
+                      var tabFrag = foundTab.url.split('#')[1];
+                      console.log("tabFrag: " + tabFrag);
 
-                    //reload to pick up new changes
-                    chrome.tabs.reload(tabs[0].id);
+                      if (searchFrag == tabFrag) {
+                        //focus the existing tab with the same URL
+                        //TODO: Make this configurable
+                        focusTab(foundWindow, foundTab); //tabs[0]);
 
-                    //no need for the new tab
-                    chrome.tabs.remove(tab.id);
+                        //reload to pick up new changes
+                        chrome.tabs.reload(foundTab.id); //tabs[0].id);
 
+                        //no need for the new tab
+                        if (newTabs.indexOf(tabId) > -1) {
+                          chrome.tabs.remove(tab.id);
+                        }
+                      }
+                    }
                   } else {
                     //open the new tab in the group window
                     chrome.tabs.move(tab.id, {windowId:foundWindow.id,index:-1});
@@ -253,7 +266,20 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
 
       //this is no longer a new tab
       newTabs.splice(newTabs.indexOf(tab.id), 1);
+    //}
+
+/*
+    else {
+      //group existing Tabs
+      //is this a tab that already exists?
+      var queryInfo = {"url":changeInfo.url}
+      chrome.tabs.query(queryInfo, function(tabs){
+        var foundTab = tabs[0];
+        focusTab(tab);
+      });
+
     }
+    */
   }
 });
 
@@ -261,9 +287,26 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
  * Give focus to a particular tab
  */
 function focusTab(window, tab) {
-  chrome.windows.update(window.id,{focused:true});
-  chrome.tabs.update(tab.id, {selected:true});
+  console.log("focusTab(window, tab):");
+  console.log(window);
+  console.log(tab);
+  chrome.windows.update(window.id,{focused:true}, function(window) {
+    chrome.tabs.update(tab.id, {selected:true});
+  });
 }
+
+/**
+ * Give focus to a particular tab
+ */
+/*
+function focusTab(tab) {
+  console.log("focusTab(tab):");
+  console.log(tab);
+  chrome.windows.update(tab.windowId,{focused:true}, function(window) {
+    chrome.tabs.update(tab.id, {selected:true});
+  });
+}
+*/
 
 /**
  * Add context menus at startup:
