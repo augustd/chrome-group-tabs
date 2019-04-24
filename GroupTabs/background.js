@@ -181,6 +181,8 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
           chrome.windows.get(rule.window, {populate:true}, function(foundWindow){
             if (foundWindow) {
               console.log("foundWindow: " + foundWindow.id);
+              if (foundWindow.id == tab.windowId) break; //we are already in the correct windows
+
               //Check for whether the new URL matches an existing tab
               //separate fragment for proper search matching
               var searchUrl  = changeInfo.url.split('#')[0];
