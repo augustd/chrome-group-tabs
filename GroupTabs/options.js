@@ -185,7 +185,6 @@ $(document).ready(function(){
   });
   $('#groupRegexForm').submit(function(event) {
     event.preventDefault();
-    alert( "Handler for .submit() called." + $('#groupRegexInput').val());
     chrome.extension.getBackgroundPage().console.log("Handler for .submit() called." + $('#groupRegexInput').val());
     groupTabs($('#groupRegexInput').val());
   });
