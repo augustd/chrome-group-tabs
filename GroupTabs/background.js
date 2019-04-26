@@ -69,9 +69,11 @@ function groupTabs(urlPattern) {
           console.log("window focused");
 
           //remember the URL pattern and the new window it was grouped into
-          urlsToGroup.push({"urlPattern":urlPattern,"window":window.id});
-          chrome.storage.local.set({"urlsToGroup":urlsToGroup});
-          console.log("urlsToGroup: " + JSON.stringify(urlsToGroup));
+          chrome.storage.local.get({urlsToGroup: []}, function(items){
+            items.urlsToGroup.push({"urlPattern":urlPattern,"window":window.id});
+            console.log("NEW urlsToGroup: " + JSON.stringify(items.urlsToGroup));
+            chrome.storage.local.set({"urlsToGroup":items.urlsToGroup});
+          })
         });
       }
 

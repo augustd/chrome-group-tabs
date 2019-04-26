@@ -176,17 +176,18 @@ $(document).ready(function(){
   $('#groupThis').click(function(){
     getCurrentTabDomain(function(domain) {
       var urlPattern = "*://" + domain + "/*";
-      groupTabs(urlPattern);
+      chrome.extension.getBackgroundPage().groupTabs(urlPattern);
     });
   });
 
   $('#groupRegexShow').click(function(){
     $('#groupRegexForm').toggle();
   });
+
   $('#groupRegexForm').submit(function(event) {
     event.preventDefault();
     chrome.extension.getBackgroundPage().console.log("Handler for .submit() called." + $('#groupRegexInput').val());
-    groupTabs($('#groupRegexInput').val());
+    chrome.extension.getBackgroundPage().groupTabs($('#groupRegexInput').val());
   });
 
   $('#search-criteria').on('change', function() {
