@@ -147,6 +147,9 @@ function getTabWindow(tabUrl, callback) {
 function moveTabs(tabs, destination) {
   for (var i = 0; i < tabs.length; i++) {
     var tab = tabs[i];
+    if (tab.pinned) {
+      continue; //skip pinned tabs
+    }
     chrome.tabs.move(tab.id, {windowId:destination.id,index:-1});
   }
 }
