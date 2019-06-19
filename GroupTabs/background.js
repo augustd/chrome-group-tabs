@@ -215,8 +215,10 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
                   //reload to pick up new changes
                   chrome.tabs.reload(foundTab.id); //tabs[0].id);
 
-                  //no need for the new tab
-                  chrome.tabs.remove(tab.id);
+                  //no need for the new tab. Close it if it is not pinned
+                  if (!tab.pinned) {
+                    chrome.tabs.remove(tab.id);
+                  }
                 }
               }
             } else {
