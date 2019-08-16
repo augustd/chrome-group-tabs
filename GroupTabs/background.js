@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 var urlsToGroup = [];
-var alwaysGroup = true;
+var alwaysGroup = false;
 
 /**
  * Parses the domain name from the URL of the current tab.
@@ -166,8 +166,9 @@ function matchRuleShort(str, rule) {
  */
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
   console.log("chrome.tabs.onUpdated: status: " + changeInfo.status + " url: " + changeInfo.url);
+  console.log("alwaysGroup: " + alwaysGroup);
   if (alwaysGroup && typeof changeInfo.url != 'undefined') {
-    console.log("alwaysGroup");
+
 
     chrome.storage.local.get({urlsToGroup: []}, function(items) {
 
@@ -256,10 +257,65 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
  */
 function focusTab(window, tab) {
   console.log("focusTab("+ JSON.stringify(window) +", " + JSON.stringify(tab) + ")");
+
   chrome.windows.update(window,{focused:true}, function(window) {
     chrome.tabs.update(tab, {selected:true});
   });
 }
+
+function startup(){
+  //alert();  //uncoment to break execution in order to launch dev tools at startup
+  return new Promise(function(resolve, reject) {
+    chrome.storage.local.get({urlsToGroup: []}, function(items) {
+      for (var i = 0; i < items.urlsToGroup.length; i++) {
+        let urlToGroup = items.urlsToGroup[i];
+        console.log(urlToGroup);
+        console.log({url:urlToGroup.urlPattern});
+
+        //see if we already have a window that matches and assign it to the group
+        chrome.tabs.query({url:urlToGroup.urlPattern}, function(foundTabs) {
+          //count the window IDs for each found tab. Window with greatest frequency becomes the new group window
+          console.log("startup: urlPattern: " + urlToGroup.urlPattern + " foundTabs: " + JSON.stringify(foundTabs));
+          let winMap = new Map();
+          for (var j = 0; j < foundTabs.length; j++) {
+            let foundTab = foundTabs[j];
+            let count = winMap.get(foundTab.windowId);
+            count = (count) ? count : 0;
+            winMap.set(foundTab.windowId, count+1);
+          }
+          let winMapSorted = new Map([...winMap.entries()].sort((a, b) => b[1] - a[1]));
+          let foundWindowId = winMapSorted.keys().next().value;
+          urlToGroup.window = foundWindowId;
+          console.log("sorted. foundWindowId: " + foundWindowId);
+
+          console.log("NEW urlsToGroup: " + JSON.stringify(items.urlsToGroup));
+          chrome.storage.local.set({"urlsToGroup":items.urlsToGroup});
+
+        });
+      }
+    });
+    //make sure it worked
+    chrome.storage.local.get({urlsToGroup: []}, function(items) {
+      console.log("FINAL urlsToGroup: " + JSON.stringify(items.urlsToGroup));
+      return resolve();
+    });
+  });
+}
+
+//HACK: create alarm to run at startup time. chrome.runtime.onStartup would be
+// preferred but listener was not working for some reason
+chrome.alarms.create("main", {when: Date.now()});
+chrome.alarms.onAlarm.addListener(function(alarm) {
+    console.log("execute alarm");
+    if (alarm.name == "main") {
+        const runStartup = startup();
+        //wait for startup to complete
+        runStartup.then(function() {
+          console.log("runStartup complete");
+          alwaysGroup = true;
+        });
+    }
+});
 
 /**
  * Add context menus at startup:

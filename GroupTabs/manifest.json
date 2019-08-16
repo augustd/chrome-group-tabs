@@ -20,5 +20,5 @@
     "chrome_style": true,
     "open_in_tab": false
   },
-  "permissions": ["tabs","contextMenus","storage"]
+  "permissions": ["tabs","contextMenus","storage","alarms"]
 }
