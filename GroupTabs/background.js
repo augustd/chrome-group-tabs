@@ -302,19 +302,18 @@ function startup(){
   });
 }
 
-//HACK: create alarm to run at startup time. chrome.runtime.onStartup would be
-// preferred but listener was not working for some reason
-chrome.alarms.create("main", {when: Date.now()});
-chrome.alarms.onAlarm.addListener(function(alarm) {
-    console.log("execute alarm");
-    if (alarm.name == "main") {
-        const runStartup = startup();
-        //wait for startup to complete
-        runStartup.then(function() {
-          console.log("runStartup complete");
-          alwaysGroup = true;
-        });
-    }
+/**
+ * Run the startup function
+ */
+chrome.runtime.onStartup.addListener(function() {
+  console.log("execute startup");
+  const runStartup = startup();
+  //wait for startup to complete
+  runStartup.then(function() {
+    console.log("runStartup complete");
+    //enable auto grouping only after startup completes
+    alwaysGroup = true;
+  });
 });
 
 /**
