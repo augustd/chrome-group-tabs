@@ -4,6 +4,7 @@
 
 var urlsToGroup = [];
 var alwaysGroup = false;
+var removedTabs = new Set();
 
 /**
  * Parses the domain name from the URL of the current tab.
@@ -164,87 +165,111 @@ function matchRuleShort(str, rule) {
 /**
  * Add a listener for tab update events
  */
-chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
-  console.log("chrome.tabs.onUpdated: status: " + changeInfo.status + " url: " + changeInfo.url);
-  console.log("alwaysGroup: " + alwaysGroup);
-  if (alwaysGroup && typeof changeInfo.url != 'undefined') {
+chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
+  let ts = Date.now();
+  if (alwaysGroup && typeof changeInfo.url != 'undefined' && !removedTabs.has(tabId)) {
+    console.log("chrome.tabs.onUpdated: tabId: " + tabId + " status: " + changeInfo.status + " url: " + changeInfo.url + " tab: " + tab.url + " (" + ts + ")");
+    console.log("alwaysGroup: " + alwaysGroup + " (" + ts + ")");
 
-
-    chrome.storage.local.get({urlsToGroup: []}, function(items) {
+    chrome.storage.local.get({urlsToGroup: []}, async function(items) {
 
       let rules = items.urlsToGroup.filter(rule => matchRuleShort(changeInfo.url, rule.urlPattern));
-      console.log("rules: " + JSON.stringify(rules));
+      console.log("rules: " + JSON.stringify(rules) + " (" + ts + ")");
       if (rules.length < 1) return; //no matching rule for this URL, nothing to do
 
       //TODO: How do we distinguish between multiple match rules on the same domain? find the longest match rule?
       var rule = rules[0];
       //the new tab URL matches an existing group.
-      console.log("match!");
+      console.log("match!" + " (" + ts + ")");
 
       //check that the window still exists
-      chrome.windows.get(rule.window, {populate:true}, function(foundWindow){
-        console.log("foundWindow: " + JSON.stringify(foundWindow));
+      chrome.windows.get(rule.window, {populate:true}, async function(foundWindow){
+        console.log("foundWindow: " + JSON.stringify(foundWindow) + " (" + ts + ")");
         if (foundWindow) {
           //Check for whether the new URL matches an existing tab
           //separate fragment for proper search matching
           var searchUrl  = changeInfo.url.split('#')[0];
           var searchFrag = changeInfo.url.split('#')[1];
-          console.log("searchFrag: " + searchFrag);
+          console.log("searchFrag: " + searchFrag + " (" + ts + ")");
 
           //TODO: how do we handle GET query params on the same URL? For example, ?ts=78123768
 
-          console.log("chrome.tabs.query() params: " + searchUrl);
-          chrome.tabs.query({"url":searchUrl,"windowId":foundWindow.id},function(tabs){
-            console.log("chrome.tabs.query() result: (" + tabs.length + ")" + JSON.stringify(tabs));
-            tabs = tabs.filter(t => t.id != tab.id);
+          console.log("chrome.tabs.query() params: " + searchUrl + " (" + ts + ")");
+          chrome.tabs.query({"url":searchUrl,"windowId":foundWindow.id}, async function(tabs){
+            console.log("chrome.tabs.query() result: (" + tabs.length + ")" + JSON.stringify(tabs) + " (" + ts + ")");
+            tabs = tabs.filter(t => t.id != tab.id);  //filter out our own tab
+            console.log("chrome.tabs.query() filter result: (" + tabs.length + ")" + JSON.stringify(tabs) + " (" + ts + ")");
 
             if (tabs.length > 0 && tabs[0].status === "complete") {
               for (var t = 0; t < tabs.length; t++) {
                 var foundTab = tabs[t];
-                console.log("checking foundTab in tabs: " + JSON.stringify(foundTab));
+                console.log("checking foundTab in tabs: " + JSON.stringify(foundTab) + " (" + ts + ") t: " + t);
 
                 var tabFrag = foundTab.url.split('#')[1];
-                console.log("tabFrag: " + tabFrag);
+                console.log("tabFrag: " + tabFrag + " (" + ts + ") t: " + t);
 
                 if (searchFrag == tabFrag) {
-                  console.log("searchFrag == tabFrag");
+                  console.log("searchFrag == tabFrag" + " (" + ts + ") t: " + t);
+                  /*
+                   //focus the existing tab with the same URL
+                   //TODO: Make this configurable
+                   focusTab(foundWindow.id, foundTab.id);
 
-                  //focus the existing tab with the same URL
-                  //TODO: Make this configurable
-                  focusTab(foundWindow.id, foundTab.id); //tabs[0]);
+                   //reload to pick up new changes
+                   chrome.tabs.reload(foundTab.id);
 
-                  //reload to pick up new changes
-                  chrome.tabs.reload(foundTab.id); //tabs[0].id);
+                   //no need for the new tab. Close it if it is not pinned
 
-                  //no need for the new tab. Close it if it is not pinned
-                  if (!tab.pinned) {
-                    chrome.tabs.remove(tab.id);
-                  }
+                   if (!tab.pinned && tab.id != foundTab.id) {
+                     console.log("removing tab: " + tab.id + " (" + ts + ") t: " + t);
+                     await new Promise((resolve, reject) => {
+                       chrome.tabs.remove(tab.id, function() {
+                         console.log("remove complete: " + tab.id + " (" + ts + ") t: " + t);
+                         resolve();
+                       });
+                     });
+                   }
+                   */
+
+                  //remove existing tab and move new tab into old one's position
+                  let tabIndex = foundTab.index;
+                  console.log("removing tab: " + foundTab.id + " (" + ts + ") t: " + t);
+                  chrome.tabs.remove(foundTab.id, function() {
+                    removedTabs.add(foundTab.id);
+                  });
+                  console.log("remove complete: " + foundTab.id + " (" + ts + ") t: " + t);
+
+                  chrome.tabs.move(tab.id, {index:tabIndex}, function(movedTab) {
+                    console.log("about to call focusTab from within move(1)");
+                    focusTab(foundWindow.id, movedTab);
+                  });
                 }
               }
             } else {
               //open the new tab in the group window
-              chrome.tabs.move(tab.id, {windowId:foundWindow.id,index:-1});
-
-              //focus the newly created tab
-              focusTab(foundWindow.id, tab.id);
+              chrome.tabs.move(tab.id, {windowId:foundWindow.id,index:-1}, function(movedTab) {
+                //focus the newly created tab
+                console.log("about to call focusTab from within move(2)");
+                focusTab(foundWindow.id, movedTab);
+              });
             }
           });
 
         } else {
-          console.log("NOT foundWindow");
+          console.log("NOT foundWindow" + " (" + ts + ")");
           //create a new window with the new tab
           chrome.windows.create({"tabId":tab.id}, function(newWindow){
-            console.log("New window created: " + newWindow.id + " rule: " + JSON.stringify(rule));
+            console.log("New window created: " + newWindow.id + " rule: " + JSON.stringify(rule) + " (" + ts + ")");
 
             //reassign the group pattern to the new window
             rule.window = newWindow.id
 
-            console.log("NEW urlsToGroup: " + JSON.stringify(items.urlsToGroup));
+            console.log("NEW urlsToGroup: " + JSON.stringify(items.urlsToGroup) + " (" + ts + ")");
             chrome.storage.local.set({"urlsToGroup":items.urlsToGroup});
 
             //focus the newly created tab
-            focusTab(newWindow.id, tab.id);
+            console.log("about to call focusTab from within NOT foundWindow");
+            focusTab(newWindow.id, tab);
           });
         }
       }); // END chrome.windows.get
@@ -252,19 +277,29 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
   }
 });
 
+chrome.tabs.onRemoved.addListener(function(tabId) {
+  let ts = Date.now();
+  console.log("chrome.tabs.onRemoved: tabId: " + tabId + " (" + ts + ")");
+  removedTabs.delete(tabId);
+});
+
 /**
  * Give focus to a particular tab
  */
-function focusTab(window, tab) {
-  console.log("focusTab("+ JSON.stringify(window) +", " + JSON.stringify(tab) + ")");
-
-  chrome.windows.update(window,{focused:true}, function(window) {
-    chrome.tabs.update(tab, {selected:true});
+function focusTab(windowId, tab, url) {
+  console.log("focusTab("+ JSON.stringify(windowId) +", " + JSON.stringify(tab) + ")");
+/*
+  let tabUpdateProperties = {selected:true, index:tab.index};
+  if (typeof(url) !== 'undefined') tabUpdateProperties.url = url;
+*/
+  chrome.windows.update(windowId,{focused:true}, function(window) {
+    //chrome.tabs.update(tab.id, tabUpdateProperties);
+    chrome.tabs.highlight({windowId:windowId, tabs:tab.index});
   });
 }
 
 function startup(){
-  //alert();  //uncoment to break execution in order to launch dev tools at startup
+  alert();  //uncoment to break execution in order to launch dev tools at startup
   return new Promise(function(resolve, reject) {
     chrome.storage.local.get({urlsToGroup: []}, function(items) {
       for (var i = 0; i < items.urlsToGroup.length; i++) {
