@@ -165,13 +165,13 @@ function matchRuleShort(str, rule) {
 /**
  * Add a listener for tab update events
  */
-chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
+chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
   let ts = Date.now();
   if (alwaysGroup && typeof changeInfo.url != 'undefined' && !removedTabs.has(tabId)) {
     console.log("chrome.tabs.onUpdated: tabId: " + tabId + " status: " + changeInfo.status + " url: " + changeInfo.url + " tab: " + tab.url + " (" + ts + ")");
     console.log("alwaysGroup: " + alwaysGroup + " (" + ts + ")");
 
-    chrome.storage.local.get({urlsToGroup: []}, async function(items) {
+    chrome.storage.local.get({urlsToGroup: []}, function(items) {
 
       let rules = items.urlsToGroup.filter(rule => matchRuleShort(changeInfo.url, rule.urlPattern));
       console.log("rules: " + JSON.stringify(rules) + " (" + ts + ")");
@@ -183,7 +183,8 @@ chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
       console.log("match!" + " (" + ts + ")");
 
       //check that the window still exists
-      chrome.windows.get(rule.window, {populate:true}, async function(foundWindow){
+      //TODO: implement windows.onRemoved to curate this list so we don't have to make this call
+      chrome.windows.get(rule.window, {populate:true}, function(foundWindow){
         console.log("foundWindow: " + JSON.stringify(foundWindow) + " (" + ts + ")");
         if (foundWindow) {
           //Check for whether the new URL matches an existing tab
@@ -194,62 +195,41 @@ chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
 
           //TODO: how do we handle GET query params on the same URL? For example, ?ts=78123768
 
+          //Look for existing tabs with the same URL
           console.log("chrome.tabs.query() params: " + searchUrl + " (" + ts + ")");
-          chrome.tabs.query({"url":searchUrl,"windowId":foundWindow.id}, async function(tabs){
+          chrome.tabs.query({"url":searchUrl,"windowId":foundWindow.id}, function(tabs){
             console.log("chrome.tabs.query() result: (" + tabs.length + ")" + JSON.stringify(tabs) + " (" + ts + ")");
-            tabs = tabs.filter(t => t.id != tab.id);  //filter out our own tab
+            tabs = tabs.filter(t => t.id != tab.id);  //filter out the tab that is being updated
             console.log("chrome.tabs.query() filter result: (" + tabs.length + ")" + JSON.stringify(tabs) + " (" + ts + ")");
 
-            if (tabs.length > 0 && tabs[0].status === "complete") {
+            //existing tabs found with same URL
+            if (tabs.length > 0) { // && tabs[0].status === "complete") {
               for (var t = 0; t < tabs.length; t++) {
                 var foundTab = tabs[t];
                 console.log("checking foundTab in tabs: " + JSON.stringify(foundTab) + " (" + ts + ") t: " + t);
+                //remove existing tab and move new tab into old one's position
+                let tabIndex = foundTab.index;
+                console.log("removing tab: " + foundTab.id + " (" + ts + ") t: " + t);
+                chrome.tabs.remove(foundTab.id, function() {
+                  removedTabs.add(foundTab.id);
+                });
+                console.log("remove complete: " + foundTab.id + " (" + ts + ") t: " + t);
 
-                var tabFrag = foundTab.url.split('#')[1];
-                console.log("tabFrag: " + tabFrag + " (" + ts + ") t: " + t);
-
-                if (searchFrag == tabFrag) {
-                  console.log("searchFrag == tabFrag" + " (" + ts + ") t: " + t);
-                  /*
-                   //focus the existing tab with the same URL
-                   //TODO: Make this configurable
-                   focusTab(foundWindow.id, foundTab.id);
-
-                   //reload to pick up new changes
-                   chrome.tabs.reload(foundTab.id);
-
-                   //no need for the new tab. Close it if it is not pinned
-
-                   if (!tab.pinned && tab.id != foundTab.id) {
-                     console.log("removing tab: " + tab.id + " (" + ts + ") t: " + t);
-                     await new Promise((resolve, reject) => {
-                       chrome.tabs.remove(tab.id, function() {
-                         console.log("remove complete: " + tab.id + " (" + ts + ") t: " + t);
-                         resolve();
-                       });
-                     });
-                   }
-                   */
-
-                  //remove existing tab and move new tab into old one's position
-                  let tabIndex = foundTab.index;
-                  console.log("removing tab: " + foundTab.id + " (" + ts + ") t: " + t);
-                  chrome.tabs.remove(foundTab.id, function() {
-                    removedTabs.add(foundTab.id);
-                  });
-                  console.log("remove complete: " + foundTab.id + " (" + ts + ") t: " + t);
-
-                  chrome.tabs.move(tab.id, {index:tabIndex}, function(movedTab) {
-                    console.log("about to call focusTab from within move(1)");
-                    focusTab(foundWindow.id, movedTab);
-                  });
-                }
+                chrome.tabs.move(tab.id, {index:tabIndex}, function(movedTab) {
+                  console.log("about to call focusTab from within move(1)");
+                  focusTab(foundWindow.id, movedTab);
+                });
               }
+            } else if (tab.windowId == foundWindow.id) {
+              //tab already exists, it is in the group window already, focus it
+              console.log("about to call focusTab from within move(2)");
+              focusTab(foundWindow.id, tab);
+
             } else {
               //open the new tab in the group window
               chrome.tabs.move(tab.id, {windowId:foundWindow.id,index:-1}, function(movedTab) {
                 //focus the newly created tab
-                console.log("about to call focusTab from within move(2)");
+                console.log("about to call focusTab from within move(3)");
                 focusTab(foundWindow.id, movedTab);
               });
             }
@@ -288,12 +268,7 @@ chrome.tabs.onRemoved.addListener(function(tabId) {
  */
 function focusTab(windowId, tab, url) {
   console.log("focusTab("+ JSON.stringify(windowId) +", " + JSON.stringify(tab) + ")");
-/*
-  let tabUpdateProperties = {selected:true, index:tab.index};
-  if (typeof(url) !== 'undefined') tabUpdateProperties.url = url;
-*/
   chrome.windows.update(windowId,{focused:true}, function(window) {
-    //chrome.tabs.update(tab.id, tabUpdateProperties);
     chrome.tabs.highlight({windowId:windowId, tabs:tab.index});
   });
 }
