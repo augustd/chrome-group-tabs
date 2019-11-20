@@ -215,22 +215,22 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
                 });
                 console.log("remove complete: " + foundTab.id + " (" + ts + ") t: " + t);
 
-                chrome.tabs.move(tab.id, {index:tabIndex}, function(movedTab) {
+                chrome.tabs.move(tab.id, {windowId:foundWindow.id, index:tabIndex}, function(movedTab) {
                   console.log("about to call focusTab from within move(1)");
-                  focusTab(foundWindow.id, movedTab);
+                  focusTab(movedTab);
                 });
               }
             } else if (tab.windowId == foundWindow.id) {
               //tab already exists, it is in the group window already, focus it
               console.log("about to call focusTab from within move(2)");
-              focusTab(foundWindow.id, tab);
+              focusTab(tab);
 
             } else {
               //open the new tab in the group window
               chrome.tabs.move(tab.id, {windowId:foundWindow.id,index:-1}, function(movedTab) {
                 //focus the newly created tab
                 console.log("about to call focusTab from within move(3)");
-                focusTab(foundWindow.id, movedTab);
+                focusTab(movedTab);
               });
             }
           });
@@ -249,7 +249,7 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
 
             //focus the newly created tab
             console.log("about to call focusTab from within NOT foundWindow");
-            focusTab(newWindow.id, tab);
+            focusTab(tab);
           });
         }
       }); // END chrome.windows.get
@@ -266,10 +266,10 @@ chrome.tabs.onRemoved.addListener(function(tabId) {
 /**
  * Give focus to a particular tab
  */
-function focusTab(windowId, tab, url) {
-  console.log("focusTab("+ JSON.stringify(windowId) +", " + JSON.stringify(tab) + ")");
-  chrome.windows.update(windowId,{focused:true}, function(window) {
-    chrome.tabs.highlight({windowId:windowId, tabs:tab.index});
+function focusTab(tab, url) {
+  console.log("focusTab("+ tab.windowId +", " + JSON.stringify(tab) + ")");
+  chrome.windows.update(tab.windowId,{focused:true}, function(window) {
+    chrome.tabs.highlight({windowId:tab.windowId, tabs:tab.index});
   });
 }
 
