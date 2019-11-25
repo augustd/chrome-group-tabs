@@ -162,6 +162,26 @@ function matchRuleShort(str, rule) {
   return new RegExp("^" + rule.split("*").join(".*") + "$").test(str);
 }
 
+function notFoundWindow(tab, rule, items) {
+  console.log("NOT foundWindow");
+  //create a new window with the new tab
+  chrome.windows.create({"tabId": tab.id}, function (newWindow) {
+    console.log("New window created: " + newWindow.id + " rule: " + JSON.stringify(rule));
+
+    //reassign the group pattern to the new window
+    rule.window = newWindow.id
+
+    console.log("NEW urlsToGroup: " + JSON.stringify(items.urlsToGroup));
+    chrome.storage.local.set({"urlsToGroup": items.urlsToGroup});
+
+    //focus the newly created tab
+    console.log("about to call focusTab from within NOT foundWindow");
+    tab.windowId = newWindow.id;
+    tab.index = 0;
+    focusTab(tab);
+  });
+}
+
 /**
  * Add a listener for tab update events
  */
@@ -183,76 +203,67 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
       console.log("match!" + " (" + ts + ")");
 
       //check that the window still exists
-      //TODO: implement windows.onRemoved to curate this list so we don't have to make this call
-      chrome.windows.get(rule.window, {populate:true}, function(foundWindow){
-        console.log("foundWindow: " + JSON.stringify(foundWindow) + " (" + ts + ")");
-        if (foundWindow) {
-          //Check for whether the new URL matches an existing tab
-          //separate fragment for proper search matching
-          var searchUrl  = changeInfo.url.split('#')[0];
-          var searchFrag = changeInfo.url.split('#')[1];
-          console.log("searchFrag: " + searchFrag + " (" + ts + ")");
+      if (typeof(rule.window) === 'undefined') {
+        notFoundWindow(tab, rule, items);
+      } else {
+        //TODO: Fix this ugly branching
+        //TODO: implement windows.onRemoved to curate this list so we don't have to make this call
+        chrome.windows.get(rule.window, {populate: true}, function (foundWindow) {
+          console.log("foundWindow: " + JSON.stringify(foundWindow) + " (" + ts + ")");
+          if (foundWindow) {
+            //Check for whether the new URL matches an existing tab
+            //separate fragment for proper search matching
+            var searchUrl = changeInfo.url.split('#')[0];
+            var searchFrag = changeInfo.url.split('#')[1];
+            console.log("searchFrag: " + searchFrag + " (" + ts + ")");
 
-          //TODO: how do we handle GET query params on the same URL? For example, ?ts=78123768
+            //TODO: how do we handle GET query params on the same URL? For example, ?ts=78123768
 
-          //Look for existing tabs with the same URL
-          console.log("chrome.tabs.query() params: " + searchUrl + " (" + ts + ")");
-          chrome.tabs.query({"url":searchUrl,"windowId":foundWindow.id}, function(tabs){
-            console.log("chrome.tabs.query() result: (" + tabs.length + ")" + JSON.stringify(tabs) + " (" + ts + ")");
-            tabs = tabs.filter(t => t.id != tab.id);  //filter out the tab that is being updated
-            console.log("chrome.tabs.query() filter result: (" + tabs.length + ")" + JSON.stringify(tabs) + " (" + ts + ")");
+            //Look for existing tabs with the same URL
+            console.log("chrome.tabs.query() params: " + searchUrl + " (" + ts + ")");
+            chrome.tabs.query({"url": searchUrl, "windowId": foundWindow.id}, function (tabs) {
+              console.log("chrome.tabs.query() result: (" + tabs.length + ")" + JSON.stringify(tabs) + " (" + ts + ")");
+              tabs = tabs.filter(t => t.id != tab.id);  //filter out the tab that is being updated
+              console.log("chrome.tabs.query() filter result: (" + tabs.length + ")" + JSON.stringify(tabs) + " (" + ts + ")");
 
-            //existing tabs found with same URL
-            if (tabs.length > 0) { // && tabs[0].status === "complete") {
-              for (var t = 0; t < tabs.length; t++) {
-                var foundTab = tabs[t];
-                console.log("checking foundTab in tabs: " + JSON.stringify(foundTab) + " (" + ts + ") t: " + t);
-                //remove existing tab and move new tab into old one's position
-                let tabIndex = foundTab.index;
-                console.log("removing tab: " + foundTab.id + " (" + ts + ") t: " + t);
-                chrome.tabs.remove(foundTab.id, function() {
-                  removedTabs.add(foundTab.id);
-                });
-                console.log("remove complete: " + foundTab.id + " (" + ts + ") t: " + t);
+              //existing tabs found with same URL
+              if (tabs.length > 0) { // && tabs[0].status === "complete") {
+                for (var t = 0; t < tabs.length; t++) {
+                  var foundTab = tabs[t];
+                  console.log("checking foundTab in tabs: " + JSON.stringify(foundTab) + " (" + ts + ") t: " + t);
+                  //remove existing tab and move new tab into old one's position
+                  let tabIndex = foundTab.index;
+                  console.log("removing tab: " + foundTab.id + " (" + ts + ") t: " + t);
+                  chrome.tabs.remove(foundTab.id, function () {
+                    removedTabs.add(foundTab.id);
+                  });
+                  console.log("remove complete: " + foundTab.id + " (" + ts + ") t: " + t);
 
-                chrome.tabs.move(tab.id, {windowId:foundWindow.id, index:tabIndex}, function(movedTab) {
-                  console.log("about to call focusTab from within move(1)");
+                  chrome.tabs.move(tab.id, {windowId: foundWindow.id, index: tabIndex}, function (movedTab) {
+                    console.log("about to call focusTab from within move(1)");
+                    focusTab(movedTab);
+                  });
+                }
+              } else if (tab.windowId == foundWindow.id) {
+                //tab already exists, it is in the group window already, focus it
+                console.log("about to call focusTab from within move(2)");
+                focusTab(tab);
+
+              } else {
+                //open the new tab in the group window
+                chrome.tabs.move(tab.id, {windowId: foundWindow.id, index: -1}, function (movedTab) {
+                  //focus the newly created tab
+                  console.log("about to call focusTab from within move(3)");
                   focusTab(movedTab);
                 });
               }
-            } else if (tab.windowId == foundWindow.id) {
-              //tab already exists, it is in the group window already, focus it
-              console.log("about to call focusTab from within move(2)");
-              focusTab(tab);
+            });
 
-            } else {
-              //open the new tab in the group window
-              chrome.tabs.move(tab.id, {windowId:foundWindow.id,index:-1}, function(movedTab) {
-                //focus the newly created tab
-                console.log("about to call focusTab from within move(3)");
-                focusTab(movedTab);
-              });
-            }
-          });
-
-        } else {
-          console.log("NOT foundWindow" + " (" + ts + ")");
-          //create a new window with the new tab
-          chrome.windows.create({"tabId":tab.id}, function(newWindow){
-            console.log("New window created: " + newWindow.id + " rule: " + JSON.stringify(rule) + " (" + ts + ")");
-
-            //reassign the group pattern to the new window
-            rule.window = newWindow.id
-
-            console.log("NEW urlsToGroup: " + JSON.stringify(items.urlsToGroup) + " (" + ts + ")");
-            chrome.storage.local.set({"urlsToGroup":items.urlsToGroup});
-
-            //focus the newly created tab
-            console.log("about to call focusTab from within NOT foundWindow");
-            focusTab(tab);
-          });
-        }
-      }); // END chrome.windows.get
+          } else {
+            notFoundWindow(tab, rule, items);
+          } // END if (foundWindow)
+        }); // END chrome.windows.get
+      } // END if (typeof(rule.window) === 'undefined')
     });
   }
 });
