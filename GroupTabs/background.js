@@ -266,6 +266,10 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
             });
 
           } else {
+            console.error("notFoundWindow(2) called - this should not happen");
+            console.error(tab);
+            console.error(rule);
+            console.error(items);
             notFoundWindow(tab, rule, items);
           } // END if (foundWindow)
         }); // END chrome.windows.get
@@ -284,6 +288,21 @@ chrome.tabs.onRemoved.addListener(function(tabId) {
   let ts = Date.now();
   console.log("chrome.tabs.onRemoved: tabId: " + tabId + " (" + ts + ")");
   removedTabs.delete(tabId);
+});
+
+chrome.windows.onRemoved.addListener(function(winId) {
+  console.log("chrome.windows.onRemoved: winId: " + winId);
+  //remember the URL pattern and the new window it was grouped into
+  chrome.storage.local.get({urlsToGroup: []}, function(items){
+    for (var i = 0; i < items.urlsToGroup.length; i++) {
+      if (items.urlsToGroup[i].windowId === winId) {
+        delete items.urlsToGroup[i].windowId;
+        break;
+      }
+    }
+    console.log("NEW urlsToGroup: " + JSON.stringify(items.urlsToGroup));
+    chrome.storage.local.set({"urlsToGroup":items.urlsToGroup});
+  })
 });
 
 /**
