@@ -5,6 +5,7 @@
 var urlsToGroup = [];
 var alwaysGroup = false;
 var removedTabs = new Set();
+var newTabs = new Set();
 
 /**
  * Parses the domain name from the URL of the current tab.
@@ -187,9 +188,14 @@ function notFoundWindow(tab, rule, items) {
  */
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
   let ts = Date.now();
-  if (alwaysGroup && typeof changeInfo.url != 'undefined' && !removedTabs.has(tabId)) {
-    console.log("chrome.tabs.onUpdated: tabId: " + tabId + " status: " + changeInfo.status + " url: " + changeInfo.url + " tab: " + tab.url + " (" + ts + ")");
-    console.log("alwaysGroup: " + alwaysGroup + " (" + ts + ")");
+  console.log("chrome.tabs.onUpdated: tabId: " + tabId + " status: " + changeInfo.status + " url: " + changeInfo.url + " tab: " + tab.url + " (" + ts + ")");
+  console.log("alwaysGroup? " + alwaysGroup + " (" + ts + ")");
+  console.log("newTabs? " + newTabs.has(tabId) + " (" + ts + ")");
+
+  if (alwaysGroup &&
+      newTabs.has(tabId) &&
+      typeof changeInfo.url != 'undefined' &&
+      !removedTabs.has(tabId)) {
 
     chrome.storage.local.get({urlsToGroup: []}, function(items) {
 
@@ -268,6 +274,12 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
   }
 });
 
+chrome.tabs.onCreated.addListener(function(tab) {
+  if (alwaysGroup) {
+    newTabs.add(tab.id);
+  }
+});
+
 chrome.tabs.onRemoved.addListener(function(tabId) {
   let ts = Date.now();
   console.log("chrome.tabs.onRemoved: tabId: " + tabId + " (" + ts + ")");
@@ -281,6 +293,9 @@ function focusTab(tab, url) {
   console.log("focusTab("+ tab.windowId +", " + JSON.stringify(tab) + ")");
   chrome.windows.update(tab.windowId,{focused:true}, function(window) {
     chrome.tabs.highlight({windowId:tab.windowId, tabs:tab.index});
+
+    //this is no longer a new tab
+    newTabs.delete(tabId);
   });
 }
 
