@@ -5,6 +5,7 @@
 var urlsToGroup = [];
 var alwaysGroup = false;
 var removedTabs = new Set();
+var newTabs = new Set();
 
 /**
  * Parses the domain name from the URL of the current tab.
@@ -187,9 +188,14 @@ function notFoundWindow(tab, rule, items) {
  */
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
   let ts = Date.now();
-  if (alwaysGroup && typeof changeInfo.url != 'undefined' && !removedTabs.has(tabId)) {
-    console.log("chrome.tabs.onUpdated: tabId: " + tabId + " status: " + changeInfo.status + " url: " + changeInfo.url + " tab: " + tab.url + " (" + ts + ")");
-    console.log("alwaysGroup: " + alwaysGroup + " (" + ts + ")");
+  console.log("chrome.tabs.onUpdated: tabId: " + tabId + " status: " + changeInfo.status + " url: " + changeInfo.url + " tab: " + tab.url + " (" + ts + ")");
+  console.log("alwaysGroup? " + alwaysGroup + " (" + ts + ")");
+  console.log("newTabs? " + newTabs.has(tabId) + " (" + ts + ")");
+
+  if (alwaysGroup &&
+      newTabs.has(tabId) &&
+      typeof changeInfo.url != 'undefined' &&
+      !removedTabs.has(tabId)) {
 
     chrome.storage.local.get({urlsToGroup: []}, function(items) {
 
@@ -260,11 +266,21 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
             });
 
           } else {
+            console.error("notFoundWindow(2) called - this should not happen");
+            console.error(tab);
+            console.error(rule);
+            console.error(items);
             notFoundWindow(tab, rule, items);
           } // END if (foundWindow)
         }); // END chrome.windows.get
       } // END if (typeof(rule.window) === 'undefined')
     });
+  }
+});
+
+chrome.tabs.onCreated.addListener(function(tab) {
+  if (alwaysGroup) {
+    newTabs.add(tab.id);
   }
 });
 
@@ -274,6 +290,21 @@ chrome.tabs.onRemoved.addListener(function(tabId) {
   removedTabs.delete(tabId);
 });
 
+chrome.windows.onRemoved.addListener(function(winId) {
+  console.log("chrome.windows.onRemoved: winId: " + winId);
+  //remember the URL pattern and the new window it was grouped into
+  chrome.storage.local.get({urlsToGroup: []}, function(items){
+    for (var i = 0; i < items.urlsToGroup.length; i++) {
+      if (items.urlsToGroup[i].windowId === winId) {
+        delete items.urlsToGroup[i].windowId;
+        break;
+      }
+    }
+    console.log("NEW urlsToGroup: " + JSON.stringify(items.urlsToGroup));
+    chrome.storage.local.set({"urlsToGroup":items.urlsToGroup});
+  })
+});
+
 /**
  * Give focus to a particular tab
  */
@@ -281,6 +312,9 @@ function focusTab(tab, url) {
   console.log("focusTab("+ tab.windowId +", " + JSON.stringify(tab) + ")");
   chrome.windows.update(tab.windowId,{focused:true}, function(window) {
     chrome.tabs.highlight({windowId:tab.windowId, tabs:tab.index});
+
+    //this is no longer a new tab
+    newTabs.delete(tabId);
   });
 }
 
