@@ -4,7 +4,9 @@
   <title>Group Tabs Options</title>
   <style>
     body { padding: 10px; min-width: 400px !important; min-height: 400px !important; }
+    h3 {display: flex;}
     div.win, div.patterns {margin: 10px; border: solid 1px; padding: 5px; background: #eaeef3;}
+    div.patterns {display:none;}
     div.tab, div.pattern {margin: 1px; border: solid 1px; padding: 5px; background: #ffffff; position: relative }
     div.winTitle {
       margin-top: -6px;
@@ -45,6 +47,21 @@
     .reload:hover {
       display: block;
     }
+    .toggle {display: block;}
+    .collapsed {
+      background-image: url("images/arrow-right-12.png");
+      background-repeat: no-repeat;
+      background-position: 0px 1px;
+      width: 16px;
+      height: 16px;
+    }
+    .shown {
+      background-image: url("images/arrow-down-12.png");
+      background-repeat: no-repeat;
+      background-position: 0px 1px;
+      width: 16px;
+      height: 16px;
+    }
     .fav {
       width: 16px;
       height: 16px;
@@ -71,11 +88,11 @@
   </form>
 
 
-  <h3>Grouped Patterns:</h3>
+  <h3><div id="patterns-toggle" class="collapsed toggle"></div>Grouped Patterns:</h3>
   <div id="patterns" class="patterns"></div>
 
-  <h3>Open Windows:</h3>
-  <div>Search: <input id="search-criteria" type="text"></div>
+  <h3><div id="windows-toggle" class="shown toggle"></div>Open Windows:</h3>
+  <div id="search">Search: <input id="search-criteria" type="text"></div>
   <div id="windows"></div>
 
   <script src="scripts/jquery-3.2.1.min.js"></script>

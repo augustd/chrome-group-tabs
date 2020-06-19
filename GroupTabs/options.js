@@ -168,6 +168,16 @@ function renderTab(tab, position) {
 $(document).ready(function(){
   restore_options();
 
+  $('#patterns-toggle').click(function(e){
+    $("#patterns").toggle();
+    $(this).toggleClass("shown").toggleClass("collapsed");
+  });
+
+  $('#windows-toggle').click(function(e){
+    $("#windows, #search").toggle();
+    $(this).toggleClass("collapsed").toggleClass("shown");
+  });
+
   $('.tab').click(function(e) {
     chrome.windows.update(this.winid,{focused:true});
     chrome.tabs.update(this.tabid, {selected:true});
