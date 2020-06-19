@@ -15,6 +15,10 @@ function restore_options() {
       patternUI.className = "pattern";
       //patternUI.textContent = pattern.urlPattern;
       patternUI.innerHTML = '<div class="title">' + pattern.urlPattern + '</div><div class="reload"></div><div class="close"></div>';
+      patternUI.setAttribute("winId", pattern.window);
+      $(patternUI).click(function(){
+        chrome.windows.update(parseInt($(this).attr('winid')),{focused:true});
+      });
       $(patternUI).hover(function(){
         $(this).find( ".close" ).show().click(function() {
           //remove grouping for this pattern
