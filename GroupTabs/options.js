@@ -44,59 +44,70 @@ function restore_options() {
 
     //populate the UI with a list of all windows
     var windowsUI = document.getElementById('windows');
-    chrome.windows.getAll({'populate':true},function(winArray) {
-      for (var i = 0; i < winArray.length; i++) {
-        var window = winArray[i];
-        var winUI = document.createElement('div');
-        winUI.className = "win";
-        winUI.setAttribute("winId", window.id);
+    chrome.windows.getCurrent(function(currentWindow){
+      chrome.windows.getAll({'populate':true},function(winArray) {
 
-        var groupUrl = getUrlByWindowId(items.urlsToGroup, window.id);
-        if (groupUrl) {
-          winUI.innerHTML = '<div class="winTitle">Grouped Window - pattern: ' + groupUrl.urlPattern + '</div>';
-        }
+        //sort the current window on top
+        winArray.sort(function(a,b) {
+          if (a.id == currentWindow.id) return -1;
 
-        for (var j = 0; j < window.tabs.length; j++) {
-          var tab = window.tabs[j];
-          var tabUI = document.createElement('div');
+          return 1;
+        });
+        for (var i = 0; i < winArray.length; i++) {
+          var window = winArray[i];
 
-          tabUI.className = "tab";
-          tabUI.setAttribute("tabId", tab.id);
-          tabUI.setAttribute("winId", window.id);
-          tabUI.setAttribute("url", tab.url);
-          tabUI.setAttribute("title", tab.title);
-          console.log(tab);
-          //this renders the actual tab
-          tabUI.innerHTML = '<img src="' + tab.favIconUrl + '" class="fav"><div class="title">' + tab.title + '</div><div class="reload"></div><div class="close"></div>';
-          $(tabUI).click(function(){
-            chrome.windows.update(parseInt($(this).attr('winid')),{focused:true});
-            chrome.tabs.update(parseInt($(this).attr('tabid')), {selected:true});
-          });
+          var winUI = document.createElement('div');
+          winUI.className = "win";
+          winUI.setAttribute("winId", window.id);
 
-          $(tabUI).hover(function(){
-            $(this).find( ".close" ).show().click(function() {
-              chrome.tabs.remove(parseInt($(this).parent().attr('tabid')));
-              if ($(this).parent().parent().children().length > 1) {
-                $(this).parent().remove(); //remove the one tab UI
-              } else {
-                $(this).parent().parent().remove(); //remove the whole window UI
-              }
+          var groupUrl = getUrlByWindowId(items.urlsToGroup, window.id);
+          if (groupUrl) {
+            winUI.innerHTML = '<div class="winTitle">Grouped Window - pattern: ' + groupUrl.urlPattern + '</div>';
+          }
+
+          for (var j = 0; j < window.tabs.length; j++) {
+            var tab = window.tabs[j];
+            var tabUI = document.createElement('div');
+
+            tabUI.className = "tab";
+            tabUI.setAttribute("tabId", tab.id);
+            tabUI.setAttribute("winId", window.id);
+            tabUI.setAttribute("url", tab.url);
+            tabUI.setAttribute("title", tab.title);
+            console.log(tab);
+            //this renders the actual tab
+            tabUI.innerHTML = '<img src="' + tab.favIconUrl + '" class="fav"><div class="title">' + tab.title + '</div><div class="reload"></div><div class="close"></div>';
+            $(tabUI).click(function(){
+              chrome.windows.update(parseInt($(this).attr('winid')),{focused:true});
+              chrome.tabs.update(parseInt($(this).attr('tabid')), {selected:true});
             });
-            $(this).find( ".reload" ).show().click(function() {
-              chrome.tabs.reload(parseInt($(this).parent().attr('tabid')));
+
+            $(tabUI).hover(function(){
+              $(this).find( ".close" ).show().click(function() {
+                chrome.tabs.remove(parseInt($(this).parent().attr('tabid')));
+                if ($(this).parent().parent().children().length > 1) {
+                  $(this).parent().remove(); //remove the one tab UI
+                } else {
+                  $(this).parent().parent().remove(); //remove the whole window UI
+                }
+              });
+              $(this).find( ".reload" ).show().click(function() {
+                chrome.tabs.reload(parseInt($(this).parent().attr('tabid')));
+              });
+            },function(){
+              $(this).find( ".close" ).hide();
+              $(this).find( ".reload" ).hide();
             });
-          },function(){
-            $(this).find( ".close" ).hide();
-            $(this).find( ".reload" ).hide();
-          });
 
-          winUI.appendChild(tabUI);
+            winUI.appendChild(tabUI);
+          }
+
+          windowsUI.appendChild(winUI);
         }
+        setTimeout(function(){$("#windows").slideDown(50)}, 50); //prevent window initial scroll bug
+      });
 
-        windowsUI.appendChild(winUI);
-      }
-      setTimeout(function(){$("#windows").slideDown(50)}, 50); //prevent window initial scroll bug
-    });
+    })
   });
 
 }
