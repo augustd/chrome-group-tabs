@@ -239,6 +239,8 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
                   console.log("checking foundTab in tabs: " + JSON.stringify(foundTab) + " (" + ts + ") t: " + t);
                   //remove existing tab and move new tab into old one's position
                   let tabIndex = foundTab.index;
+                  let tabGroup = foundTab.groupId;
+                  console.log("foundTab.group: " + tabGroup);
                   console.log("removing tab: " + foundTab.id + " (" + ts + ") t: " + t);
                   chrome.tabs.remove(foundTab.id, function () {
                     removedTabs.add(foundTab.id);
@@ -246,6 +248,10 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
                   console.log("remove complete: " + foundTab.id + " (" + ts + ") t: " + t);
 
                   chrome.tabs.move(tab.id, {windowId: foundWindow.id, index: tabIndex}, function (movedTab) {
+                    if (tabGroup) {
+                      chrome.tabs.group({groupId:tabGroup, tabIds:[movedTab.id]});
+                    }
+
                     console.log("about to call focusTab from within move(1)");
                     focusTab(movedTab);
                   });
@@ -308,7 +314,7 @@ chrome.windows.onRemoved.addListener(function(winId) {
 /**
  * Give focus to a particular tab
  */
-function focusTab(tab, url) {
+function focusTab(tab) {
   console.log("focusTab("+ tab.windowId +", " + JSON.stringify(tab) + ")");
   chrome.windows.update(tab.windowId,{focused:true}, function(window) {
     chrome.tabs.highlight({windowId:tab.windowId, tabs:tab.index});

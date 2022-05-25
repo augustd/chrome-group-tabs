@@ -1,0 +1,20 @@
+            console.error("notFoundWindow(2) called - this should not happen");
+            console.error(tab);
+            console.error(rule);
+            console.error(items);
+
+
+            chrome.windows.onRemoved.addListener(function(winId) {
+              console.log("chrome.windows.onRemoved: winId: " + winId);
+              //remember the URL pattern and the new window it was grouped into
+              chrome.storage.local.get({urlsToGroup: []}, function(items){
+                for (var i = 0; i < items.urlsToGroup.length; i++) {
+                  if (items.urlsToGroup[i].windowId === winId) {
+                    delete items.urlsToGroup[i].windowId;
+                    break;
+                  }
+                }
+                console.log("NEW urlsToGroup: " + JSON.stringify(items.urlsToGroup));
+                chrome.storage.local.set({"urlsToGroup":items.urlsToGroup});
+              })
+            });
