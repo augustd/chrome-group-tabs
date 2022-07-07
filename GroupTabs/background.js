@@ -248,7 +248,7 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
                   console.log("remove complete: " + foundTab.id + " (" + ts + ") t: " + t);
 
                   chrome.tabs.move(tab.id, {windowId: foundWindow.id, index: tabIndex}, function (movedTab) {
-                    if (tabGroup) {
+                    if (tabGroup && tabGroup >= 0) {
                       chrome.tabs.group({groupId:tabGroup, tabIds:[movedTab.id]});
                     }
 
