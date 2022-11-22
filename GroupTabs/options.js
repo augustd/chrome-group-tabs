@@ -76,7 +76,7 @@ function restore_options() {
             tabUI.setAttribute("title", tab.title);
             console.log(tab);
             //this renders the actual tab
-            tabUI.innerHTML = '<img src="' + tab.favIconUrl + '" class="fav"><div class="title">' + tab.title + '</div><div class="reload"></div><div class="close"></div>';
+            tabUI.innerHTML = '<img src="' + tab.favIconUrl + '" class="fav"><div class="title">' + tab.title + '</div><div class="copy"></div><div class="reload"></div><div class="close"></div>';
             $(tabUI).click(function(){
               chrome.windows.update(parseInt($(this).attr('winid')),{focused:true});
               chrome.tabs.update(parseInt($(this).attr('tabid')), {selected:true});
@@ -94,9 +94,26 @@ function restore_options() {
               $(this).find( ".reload" ).show().click(function() {
                 chrome.tabs.reload(parseInt($(this).parent().attr('tabid')));
               });
+              $(this).find( ".copy" ).show().click(function() {
+                console.log("copy clicked! " + $(this).parent().attr("title"));
+
+                const clipboardItem = new ClipboardItem({
+                  "text/plain": new Blob(
+                      [$(this).parent().attr("title")],
+                      { type: "text/plain" }
+                  ),
+                  "text/html": new Blob(
+                      ["<a href='" + $(this).parent().attr("url") + "'>" + $(this).parent().attr("title") + "</a>"],
+                      { type: "text/html" }
+                  )
+                });
+                navigator.clipboard.write([clipboardItem]);
+
+              });
             },function(){
               $(this).find( ".close" ).hide();
               $(this).find( ".reload" ).hide();
+              $(this).find( ".copy" ).hide();
             });
 
             winUI.appendChild(tabUI);
