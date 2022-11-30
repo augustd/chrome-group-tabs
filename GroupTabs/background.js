@@ -12,6 +12,10 @@ chrome.runtime.onMessage.addListener(
       if (request.greeting == "log") {
         console.log(request);
         sendResponse({farewell: "logged"});
+      } else if (request.greeting == "removeGroup") {
+        removeGroup(request.pattern);
+      } else if (request.greeting == "groupTabs") {
+        groupTabs(request.pattern);
       }
     }
 );

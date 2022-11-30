@@ -22,7 +22,7 @@ function restore_options() {
       $(patternUI).hover(function(){
         $(this).find( ".close" ).show().click(function() {
           //remove grouping for this pattern
-          chrome.extension.getBackgroundPage().removeGroup(pattern.urlPattern);
+          chrome.runtime.sendMessage({greeting: "removeGroup", pattern: pattern.urlPattern}, function (response) {});
           if ($(this).parent().parent().children().length > 1) {
             $(this).parent().remove(); //remove the one tab UI
           } else {
@@ -37,7 +37,6 @@ function restore_options() {
         $(this).find( ".close" ).hide();
         $(this).find( ".reload" ).hide();
       });
-
 
       patterns.appendChild(patternUI);
     });
@@ -149,6 +148,7 @@ const sendCopyMessage = function(title, url) {
     });
   });
 }
+
 function getUrlByWindowId(urls, winId) {
   var array = urls.filter(function(urls){ return urls.window === winId; });
   return array[0];
@@ -237,7 +237,7 @@ $(document).ready(function(){
   $('#groupThis').click(function(){
     getCurrentTabDomain(function(domain) {
       var urlPattern = "*://" + domain + "/*";
-      chrome.extension.getBackgroundPage().groupTabs(urlPattern);
+      chrome.runtime.sendMessage({greeting: "groupTabs", pattern: urlPattern}, function (response) {});
     });
   });
 
@@ -247,8 +247,9 @@ $(document).ready(function(){
 
   $('#groupRegexForm').submit(function(event) {
     event.preventDefault();
-    console.log("Handler for .submit() called." + $('#groupRegexInput').val());
-    chrome.extension.getBackgroundPage().groupTabs($('#groupRegexInput').val());
+    const inputPattern = $('#groupRegexInput').val()
+    console.log("Handler for .submit() called." + inputPattern);
+    chrome.runtime.sendMessage({greeting: "groupTabs", pattern: inputPattern}, function (response) {});
   });
 
   $('#search-criteria').on('change', function() {
