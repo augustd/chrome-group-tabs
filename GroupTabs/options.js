@@ -77,10 +77,6 @@ function restore_options() {
             console.log(tab);
             //this renders the actual tab
             tabUI.innerHTML = '<img src="' + tab.favIconUrl + '" class="fav"><div class="title">' + tab.title + '</div><div class="copy"></div><div class="reload"></div><div class="close"></div>';
-            $(tabUI).click(function(){
-              chrome.windows.update(parseInt($(this).attr('winid')),{focused:true});
-              chrome.tabs.update(parseInt($(this).attr('tabid')), {selected:true});
-            });
 
             $(tabUI).hover(function(){
               $(this).find( ".close" ).show().click(function() {
@@ -94,26 +90,27 @@ function restore_options() {
               $(this).find( ".reload" ).show().click(function() {
                 chrome.tabs.reload(parseInt($(this).parent().attr('tabid')));
               });
-              $(this).find( ".copy" ).show().click(function() {
-                console.log("copy clicked! " + $(this).parent().attr("title"));
+              $(this).find( ".copy" ).show().click(async function(event) {
+                //make sure this even does not propagate: that could cause us to lose focus on this tab
+                //(e.g. swtiching to the clicked tab) and then the content script won't work.
+                event.stopPropagation();
 
-                const clipboardItem = new ClipboardItem({
-                  "text/plain": new Blob(
-                      [$(this).parent().attr("title")],
-                      { type: "text/plain" }
-                  ),
-                  "text/html": new Blob(
-                      ["<a href='" + $(this).parent().attr("url") + "'>" + $(this).parent().attr("title") + "</a>"],
-                      { type: "text/html" }
-                  )
-                });
-                navigator.clipboard.write([clipboardItem]);
+                //get the title and URL of teh selected page to create the link
+                const title = $(this).parent().attr("title");
+                const url = $(this).parent().attr("url");
 
+                await sendCopyMessage(title, url);
               });
             },function(){
               $(this).find( ".close" ).hide();
               $(this).find( ".reload" ).hide();
               $(this).find( ".copy" ).hide();
+            });
+
+            $(tabUI).click(function(){
+              console.log("tabUI clicked");
+              chrome.windows.update(parseInt($(this).attr('winid')),{focused:true});
+              chrome.tabs.update(parseInt($(this).attr('tabid')), {selected:true});
             });
 
             winUI.appendChild(tabUI);
@@ -129,6 +126,29 @@ function restore_options() {
 
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+const sendCopyMessage = function(title, url) {
+  chrome.runtime.sendMessage({greeting: "log", message: "about to send copy message", "title": title, "url": url}, function (response) {});
+
+  //close the popup window so we can get focus on the tab that contains the content script
+  window.close();
+
+  //sleep for a moment to ensure the window is closed
+  sleep(100);
+
+  chrome.runtime.sendMessage({greeting: "log", message: "window closed"}, function (response) {});
+
+  //get focus on the current tab (the tab must be focused for navigator.clipboard.write to work
+  chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+    //send message tothe content script to perform the copy
+    chrome.tabs.sendMessage(tabs[0].id, {greeting: "copy", title: title, url: url}, function(response) {
+      console.log(response);
+    });
+  });
+}
 function getUrlByWindowId(urls, winId) {
   var array = urls.filter(function(urls){ return urls.window === winId; });
   return array[0];
@@ -148,7 +168,6 @@ function renderWindow(windowId) {
 }
 
 function renderTab(tab, position) {
-  chrome.extension.getBackgroundPage().console.log('rendering new tab at position: ' + position);
   var tabUI = document.createElement('div');
 
   tabUI.className = "tab";
@@ -183,16 +202,16 @@ function renderTab(tab, position) {
   //insert the new tab at the specified position
   if (Number.isInteger(position)) {
     //account for extra div in grouped windows
-    if ($('.win[winId=' + tab.windowId + '] > div.winTitle')) position++;
+    if ($(".win[winId='" + tab.windowId + "'] > div.winTitle")) position++;
 
     if (position === 0) {
-       $('.win[winId=' + tab.windowId + ']').prepend(tabUI);
+       $(".win[winId='" + tab.windowId + "']").prepend(tabUI);
     } else {
-      $('.win[winId=' + tab.windowId + '] > div:nth-child(' + (position) + ')').after(tabUI);
+      $(".win[winId='" + tab.windowId + "'] > div:nth-child(" + (position) + ")").after(tabUI);
     }
   } else {
     //no position specified, just add at the end
-    $('.win[winId=' + tab.windowId + ']').append(tabUI);
+    $(".win[winId='" + tab.windowId + "']").append(tabUI);
   }
 
 }
@@ -228,7 +247,7 @@ $(document).ready(function(){
 
   $('#groupRegexForm').submit(function(event) {
     event.preventDefault();
-    chrome.extension.getBackgroundPage().console.log("Handler for .submit() called." + $('#groupRegexInput').val());
+    console.log("Handler for .submit() called." + $('#groupRegexInput').val());
     chrome.extension.getBackgroundPage().groupTabs($('#groupRegexInput').val());
   });
 
@@ -257,11 +276,11 @@ $(document).ready(function(){
   });
 
   chrome.tabs.onRemoved.addListener(function(tabId, removeInfo) {
-    $('.tab[tabId=' + tabId + ']').remove();
+    $(".tab[tabId='" + tabId + "']").remove();
   });
 
   chrome.windows.onRemoved.addListener(function(windowId) {
-    $('.win[winId=' + windowId + ']').remove();
+    $(".win[winId='" + windowId + "']").remove();
   });
 
   chrome.windows.onCreated.addListener(function(window){
@@ -273,16 +292,16 @@ $(document).ready(function(){
   });
 
   chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
-    $('.tab[tabId=' + tabId + ']').find(".title").text(tab.title);
+    $(".tab[tabId='" + tabId + "']").find(".title").text(tab.title);
   });
 
   chrome.tabs.onDetached.addListener(function(tabId, detachInfo){
-    $('.tab[tabId=' + tabId + ']').remove();
+    $(".tab[tabId='" + tabId + "']").remove();
   });
 
   chrome.tabs.onAttached.addListener(function(tabId, attachInfo){
     chrome.tabs.get(tabId, function(tab){
-      chrome.extension.getBackgroundPage().console.log('tab attached at position: ' + attachInfo.newPosition);
+      console.log('tab attached at position: ' + attachInfo.newPosition);
       renderTab(tab, attachInfo.newPosition);
     });
   });

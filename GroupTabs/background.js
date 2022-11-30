@@ -1,4 +1,4 @@
-// Copyright (c) 2019 August Detlefsen. All rights reserved.
+// Copyright (c) 2022 August Detlefsen. All rights reserved.
 // Use of this source code is governed by an Apache-style license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,15 @@ var urlsToGroup = [];
 var alwaysGroup = false;
 var removedTabs = new Set();
 var newTabs = new Set();
+
+chrome.runtime.onMessage.addListener(
+    async function(request, sender, sendResponse) {
+      if (request.greeting == "log") {
+        console.log(request);
+        sendResponse({farewell: "logged"});
+      }
+    }
+);
 
 /**
  * Parses the domain name from the URL of the current tab.
@@ -383,6 +392,9 @@ chrome.runtime.onStartup.addListener(function() {
  * - Checkbox to determine whether to always group new tabs that match
  */
 chrome.runtime.onInstalled.addListener(function() {
+  chrome.contextMenus.create({"title": "Copy Link to this page",
+                              "contexts":["all"],
+                              "id": "copyLink"});
   chrome.contextMenus.create({"title": "Specify Tab URLs to Group",
                               "contexts":["all"],
                               "id": "groupTabsContext"});
@@ -401,6 +413,8 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
       groupTabsContextOnClick(info.pageUrl, tab)
     } else if (info.menuItemId === "groupTabsAlways") {
       groupTabsAlwaysOnClick(info,tab);
+    } else if (info.menuItemId === "copyLink") {
+      copyLink(info.pageUrl, tab);
     }
 });
 
@@ -417,4 +431,17 @@ function groupTabsContextOnClick(pageUrl, tab) {
  */
 function groupTabsAlwaysOnClick(info, tab) {
   alwaysGroup = info.checked;
+}
+
+/**
+ * Callback function activated when the context menu item is clicked
+ */
+async function copyLink(url, tab) {
+
+  const title = tab.title;
+
+  console.log("about to send copy message. title: " + title + " url: " + url);
+  chrome.tabs.sendMessage(tab.id, {greeting: "copy", title: title, url: url}, function(response) {
+    console.log(response);
+  });
 }
