@@ -133,9 +133,9 @@ const sendCopyMessage = function(title, url) {
   chrome.runtime.sendMessage({greeting: "log", message: "about to send copy message", "title": title, "url": url}, function (response) {});
 
   //close the popup window so we can get focus on the tab that contains the content script
-  window.close();
-
   //sleep for a moment to ensure the window is closed
+  //thanks to Gursev Singh Kalra for figuring this part out
+  window.close();
   sleep(100);
 
   chrome.runtime.sendMessage({greeting: "log", message: "window closed"}, function (response) {});
