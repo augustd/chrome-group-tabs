@@ -2,7 +2,6 @@
 // Use of this source code is governed by an Apache-style license that can be
 // found in the LICENSE file.
 
-var urlsToGroup = [];
 var alwaysGroup = false;
 var removedTabs = new Set();
 var newTabs = new Set();
@@ -15,7 +14,7 @@ chrome.runtime.onMessage.addListener(
       } else if (request.greeting == "removeGroup") {
         removeGroup(request.pattern);
       } else if (request.greeting == "groupTabs") {
-        groupTabs(request.pattern);
+        groupTabs(request.pattern, request.windowId);
       }
     }
 );
@@ -50,12 +49,13 @@ function getCurrentTabDomain(callback) {
 /**
  * Groups all tabs with URLs matching a pattern into the same window
  */
-function groupTabs(urlPattern) {
+async function groupTabs(urlPattern, windowId) {
   console.log("groupTabs: " + urlPattern);
 
   //check if we already have a window for this pattern
-  getTabWindow(urlPattern, function(tabWindow){
+  await getTabWindow(urlPattern, windowId, async function(tabWindow){
     console.log("groupTabs: tabWindow: " + JSON.stringify(tabWindow));
+    const urlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
 
     //get the tabs that match the URL pattern
     chrome.tabs.query({url:urlPattern}, function(tabs) {
@@ -68,7 +68,7 @@ function groupTabs(urlPattern) {
       } else {
         //no existing window for this pattern so create a new window
         var tabId = (tabs.length > 0) ? tabs[0].id : null;
-        chrome.windows.create({"tabId":tabId}, function(window){
+        chrome.windows.create({"tabId":tabId}, async function(window){
 
           console.log("window: " + JSON.stringify(window));
 
@@ -84,29 +84,28 @@ function groupTabs(urlPattern) {
           console.log("window focused");
 
           //remember the URL pattern and the new window it was grouped into
-          chrome.storage.local.get({urlsToGroup: []}, function(items){
-            items.urlsToGroup.push({"urlPattern":urlPattern,"window":window.id});
-            console.log("NEW urlsToGroup: " + JSON.stringify(items.urlsToGroup));
-            chrome.storage.local.set({"urlsToGroup":items.urlsToGroup});
-          })
+          urlsToGroup.push({"urlPattern":urlPattern,"window":window.id});
+          console.log("NEW urlsToGroup: " + JSON.stringify(items.urlsToGroup));
+          await saveObjectInLocalStorage("urlsToGroup", urlsToGroup);
         });
       }
 
-      console.log("urlsToGroup(2): " + JSON.stringify(urlsToGroup));  });
+      console.log("urlsToGroup(2): ");
+      console.log(urlsToGroup);
+    });
   });
 }
 
-function removeGroup(urlPattern) {
-    chrome.storage.local.get({urlsToGroup: []}, function(items) {
-      console.log("removeGroup(" + urlPattern + ")");
-      var newUrls = items.urlsToGroup.filter(function(el) {
-        console.log("el: " + JSON.stringify(el));
-        return el.urlPattern != urlPattern;
-      });
-
-      chrome.storage.local.set({"urlsToGroup":newUrls});
-      console.log("removeGroup(): " + JSON.stringify(newUrls));
-    });
+async function removeGroup(urlPattern) {
+  console.log("removeGroup(" + urlPattern + ")");
+  const urlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
+  let newUrls = urlsToGroup.filter(function(el) {
+    console.log("el: " + JSON.stringify(el));
+    return el.urlPattern != urlPattern;
+  });
+  await saveObjectInLocalStorage("urlsToGroup", newUrls);
+  console.log("removeGroup() output: ");
+  console.log(newUrls);
 }
 
 /**
@@ -116,13 +115,16 @@ function removeGroup(urlPattern) {
  * 2. If there is an existing match rule but the window no longer exists a new window will be created
  * 3. Otherwise return null
  */
-function getTabWindow(tabUrl, callback) {
-  console.log("getTabWindow: " + tabUrl);
+async function getTabWindow(tabUrl, windowId, callback) {
+  console.log("getTabWindow: " + tabUrl + " windowId: " + windowId);
+
+  if (windowId) windowId = parseInt(windowId); //needs to be a number for chrome.tabs.get
 
   //are we dealing with a new regex?
-
-
   var match = false;
+  const urlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
+  console.log("urlsToGroup:");
+  console.log(urlsToGroup);
   for (var i = 0; i < urlsToGroup.length; i++) {
     var rule = urlsToGroup[i];
     console.log("rule: " + JSON.stringify(rule));
@@ -130,20 +132,34 @@ function getTabWindow(tabUrl, callback) {
       //the new tab URL matches an existing group.
       console.log("MATCH!");
       match = true;
+
+      //if we have a new window ID passed in, use that
+      if (windowId) {
+        console.log("Setting windowId to: " + windowId);
+        rule.window = windowId;
+        console.log("updated rule: ");
+        console.log(rule);
+        console.log("urlsToGroup:");
+        console.log(urlsToGroup);
+
+        await saveObjectInLocalStorage("urlsToGroup", urlsToGroup);
+      }
+
       //check that the window still exists
+      console.log("checking for existing window for rule: ");
+      console.log(rule);
       chrome.windows.get(rule.window, {populate:true}, function(foundWindow){
         if (foundWindow) {
           console.log("FOUND! " + foundWindow);
           callback(foundWindow);
         } else {
           //create a new window with the new tab
-          chrome.windows.create({}, function(newWindow){ //"tabId":tab.id
+          chrome.windows.create({}, async function(newWindow){ //"tabId":tab.id
             console.log("CREATED NEW! " + JSON.stringify(newWindow));
 
             //reassign the group pattern to the new window
             rule.window = newWindow.id
-            chrome.storage.local.set({"urlsToGroup":urlsToGroup});
-
+            await saveObjectInLocalStorage("urlsToGroup", urlsToGroup);
             callback(newWindow);
           });
         }
@@ -151,8 +167,36 @@ function getTabWindow(tabUrl, callback) {
     }
   }
 
+  //no matching rule was found
   if (!match) {
-    callback(null);
+    console.log("No match to existing rule");
+    //if we have a new window ID passed in, try to use that
+    if (windowId) {
+      //check that the window still exists
+      console.log("checking whether window " + windowId + " exists");
+      chrome.windows.get(windowId, {populate: true}, async function(foundWindow) {
+        if (foundWindow) {
+          console.log("Existing window FOUND! " + foundWindow);
+          callback(foundWindow);
+
+          //associate the pattern with the new window
+          let rule = new Object();
+          rule.urlPattern = tabUrl;
+          rule.window = windowId;
+          urlsToGroup.push(rule);
+          await saveObjectInLocalStorage("urlsToGroup", urlsToGroup);
+
+        } else {
+          //window does not exist, return null and a new window will be created
+          console.log("Window " + windowId + " DOES NOT exist");
+          callback(null);
+        }
+      });
+    } else {
+      //windowId not passed, return null and a new window will be created
+      console.log("windowId is null");
+      callback(null);
+    }
   }
 }
 
@@ -176,17 +220,18 @@ function matchRuleShort(str, rule) {
   return new RegExp("^" + rule.split("*").join(".*") + "$").test(str);
 }
 
-function notFoundWindow(tab, rule, items) {
+async function notFoundWindow(tab, rule, urlsToGroup) {
   console.log("NOT foundWindow");
   //create a new window with the new tab
-  chrome.windows.create({"tabId": tab.id}, function (newWindow) {
+  chrome.windows.create({"tabId": tab.id}, async function (newWindow) {
     console.log("New window created: " + newWindow.id + " rule: " + JSON.stringify(rule));
 
     //reassign the group pattern to the new window
     rule.window = newWindow.id
 
-    console.log("NEW urlsToGroup: " + JSON.stringify(items.urlsToGroup));
-    chrome.storage.local.set({"urlsToGroup": items.urlsToGroup});
+    console.log("NEW urlsToGroup: ");
+    console.log(urlsToGroup);
+    await saveObjectInLocalStorage("urlsToGroup", urlsToGroup);
 
     //focus the newly created tab
     console.log("about to call focusTab from within NOT foundWindow");
@@ -199,7 +244,7 @@ function notFoundWindow(tab, rule, items) {
 /**
  * Add a listener for tab update events
  */
-chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
+chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
   let ts = Date.now();
   console.log("chrome.tabs.onUpdated: tabId: " + tabId + " status: " + changeInfo.status + " url: " + changeInfo.url + " tab: " + tab.url + " (" + ts + ")");
   console.log("alwaysGroup? " + alwaysGroup + " (" + ts + ")");
@@ -210,9 +255,9 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
       typeof changeInfo.url != 'undefined' &&
       !removedTabs.has(tabId)) {
 
-    chrome.storage.local.get({urlsToGroup: []}, function(items) {
+    const urlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
 
-      let rules = items.urlsToGroup.filter(rule => matchRuleShort(changeInfo.url, rule.urlPattern));
+      let rules = urlsToGroup.filter(rule => matchRuleShort(changeInfo.url, rule.urlPattern));
       console.log("rules: " + JSON.stringify(rules) + " (" + ts + ")");
       if (rules.length < 1) return; //no matching rule for this URL, nothing to do
 
@@ -223,7 +268,7 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
 
       //check that the window still exists
       if (typeof(rule.window) === 'undefined') {
-        notFoundWindow(tab, rule, items);
+        notFoundWindow(tab, rule, urlsToGroup);
       } else {
         //TODO: Fix this ugly branching
         //TODO: implement windows.onRemoved to curate this list so we don't have to make this call
@@ -289,11 +334,10 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
             console.error(tab);
             console.error(rule);
             console.error(items);
-            notFoundWindow(tab, rule, items);
+            notFoundWindow(tab, rule, urlsToGroup);
           } // END if (foundWindow)
         }); // END chrome.windows.get
       } // END if (typeof(rule.window) === 'undefined')
-    });
   }
 });
 
@@ -309,19 +353,21 @@ chrome.tabs.onRemoved.addListener(function(tabId) {
   removedTabs.delete(tabId);
 });
 
-chrome.windows.onRemoved.addListener(function(winId) {
+chrome.windows.onRemoved.addListener(async function(winId) {
   console.log("chrome.windows.onRemoved: winId: " + winId);
   //remember the URL pattern and the new window it was grouped into
-  chrome.storage.local.get({urlsToGroup: []}, function(items){
-    for (var i = 0; i < items.urlsToGroup.length; i++) {
-      if (items.urlsToGroup[i].windowId === winId) {
-        delete items.urlsToGroup[i].windowId;
-        break;
-      }
+  const urlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
+
+  for (var i = 0; i < urlsToGroup.length; i++) {
+    if (urlsToGroup[i].windowId === winId) {
+      delete urlsToGroup[i].windowId;
+      break;
     }
-    console.log("NEW urlsToGroup: " + JSON.stringify(items.urlsToGroup));
-    chrome.storage.local.set({"urlsToGroup":items.urlsToGroup});
-  })
+  }
+  console.log("NEW urlsToGroup: ");
+  console.log(urlsToGroup);
+  await saveObjectInLocalStorage("urlsToGroup", urlsToGroup);
+  //})
 });
 
 /**
@@ -340,14 +386,15 @@ function focusTab(tab) {
 function startup(){
   alert();  //uncoment to break execution in order to launch dev tools at startup
   return new Promise(function(resolve, reject) {
-    chrome.storage.local.get({urlsToGroup: []}, function(items) {
-      for (var i = 0; i < items.urlsToGroup.length; i++) {
-        let urlToGroup = items.urlsToGroup[i];
+    const urlsToGroup = getObjectFromLocalStorage("urlsToGroup");
+
+      for (var i = 0; i < urlsToGroup.length; i++) {
+        let urlToGroup = urlsToGroup[i];
         console.log(urlToGroup);
         console.log({url:urlToGroup.urlPattern});
 
         //see if we already have a window that matches and assign it to the group
-        chrome.tabs.query({url:urlToGroup.urlPattern}, function(foundTabs) {
+        chrome.tabs.query({url:urlToGroup.urlPattern}, async function(foundTabs) {
           //count the window IDs for each found tab. Window with greatest frequency becomes the new group window
           console.log("startup: urlPattern: " + urlToGroup.urlPattern + " foundTabs: " + JSON.stringify(foundTabs));
           let winMap = new Map();
@@ -362,17 +409,18 @@ function startup(){
           urlToGroup.window = foundWindowId;
           console.log("sorted. foundWindowId: " + foundWindowId);
 
-          console.log("NEW urlsToGroup: " + JSON.stringify(items.urlsToGroup));
-          chrome.storage.local.set({"urlsToGroup":items.urlsToGroup});
-
+          console.log("NEW urlsToGroup: ");
+          console.log(urlsToGroup);
+          await saveObjectInLocalStorage("urlsToGroup", urlsToGroup);
+          //chrome.storage.local.set({"urlsToGroup":items.urlsToGroup});
         });
       }
-    });
+
     //make sure it worked
-    chrome.storage.local.get({urlsToGroup: []}, function(items) {
-      console.log("FINAL urlsToGroup: " + JSON.stringify(items.urlsToGroup));
-      return resolve();
-    });
+    const finalUrlsToGroup = getObjectFromLocalStorage("urlsToGroup");
+    console.log("FINAL urlsToGroup: ");
+    console.log(finalUrlsToGroup);
+    return resolve();
   });
 }
 
@@ -449,3 +497,51 @@ async function copyLink(url, tab) {
     console.log(response);
   });
 }
+
+/**
+ * Retrieve object from Chrome's Local Storage Area
+ * @param {string} key
+ */
+const getObjectFromLocalStorage = async function(key) {
+  return new Promise((resolve, reject) => {
+    try {
+      chrome.storage.local.get(key, function(value) {
+        console.log("getObjectFromLocalStorage");
+        console.log(value[key]);
+        console.log("type: " + (typeof value[key]));
+        if (typeof value[key] === "object") {
+          console.log(value[key]);
+          resolve(value[key]);
+        } else if (value[key]) {
+          const output = JSON.parse(value[key]);
+          console.log(output);
+          resolve(output);
+        } else {
+          resolve({});
+        }
+      });
+    } catch (ex) {
+      reject(ex);
+    }
+  });
+};
+
+/**
+ * Save Object in Chrome's Local Storage Area
+ * @param {*} obj
+ */
+const saveObjectInLocalStorage = async function(key, value) {
+  return new Promise((resolve, reject) => {
+    try {
+      const valueString = JSON.stringify(value);
+
+      console.log("saveObjectInLocalStorage: " + valueString);
+
+      chrome.storage.local.set({[key]:valueString}, function() {
+        resolve();
+      });
+    } catch (ex) {
+      reject(ex);
+    }
+  });
+};

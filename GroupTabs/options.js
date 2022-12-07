@@ -1,18 +1,12 @@
-var urlsToGroup;
-
 // Restores state using the preferences stored in chrome.storage.
 // generates list of windows and tabs
-function restore_options() {
-  chrome.storage.local.get({
-    'urlsToGroup': []
-  }, function(items) {
+async function restore_options() {
+  const urlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
 
-    urlsToGroup = items.urlsToGroup;
-
-    var patterns = document.getElementById('patterns');
-    items.urlsToGroup.forEach(function(pattern){
-      var patternUI = document.createElement('div');
-      patternUI.className = "pattern";
+  const patterns = document.getElementById('patterns');
+  urlsToGroup.forEach(function(pattern){
+    const patternUI = document.createElement('div');
+    patternUI.className = "pattern";
       //patternUI.textContent = pattern.urlPattern;
       patternUI.innerHTML = '<div class="title">' + pattern.urlPattern + '</div><div class="reload"></div><div class="close"></div>';
       patternUI.setAttribute("winId", pattern.window);
@@ -59,7 +53,7 @@ function restore_options() {
           winUI.className = "win";
           winUI.setAttribute("winId", window.id);
 
-          var groupUrl = getUrlByWindowId(items.urlsToGroup, window.id);
+          var groupUrl = getUrlByWindowId(urlsToGroup, window.id);
           if (groupUrl) {
             winUI.innerHTML = '<div class="winTitle">Grouped Window - pattern: ' + groupUrl.urlPattern + '</div>';
           }
@@ -120,9 +114,7 @@ function restore_options() {
         setTimeout(function(){$("#windows").slideDown(50)}, 50); //prevent window initial scroll bug
       });
 
-    })
-  });
-
+    });
 }
 
 function sleep(ms) {
@@ -154,13 +146,15 @@ function getUrlByWindowId(urls, winId) {
   return array[0];
 }
 
-function renderWindow(windowId) {
-  var windowsUI = document.getElementById('windows');
-  var winUI = document.createElement('div');
+async function renderWindow(windowId) {
+  let windowsUI = document.getElementById('windows');
+  const winUI = document.createElement('div');
   winUI.className = "win";
   winUI.setAttribute("winId", windowId);
 
-  var groupUrl = getUrlByWindowId(urlsToGroup, windowId);
+  const urlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
+
+  const groupUrl = getUrlByWindowId(urlsToGroup, windowId);
   if (groupUrl) {
     winUI.innerHTML = '<div class="winTitle">Grouped Window - pattern: ' + groupUrl.urlPattern + '</div>';
   }
@@ -168,7 +162,7 @@ function renderWindow(windowId) {
 }
 
 function renderTab(tab, position) {
-  var tabUI = document.createElement('div');
+  const tabUI = document.createElement('div');
 
   tabUI.className = "tab";
   tabUI.setAttribute("tabId", tab.id);
@@ -247,9 +241,10 @@ $(document).ready(function(){
 
   $('#groupRegexForm').submit(function(event) {
     event.preventDefault();
-    const inputPattern = $('#groupRegexInput').val()
+    const inputPattern = $('#groupRegexInput').val();
+    const windowId = $('#windowId').val();
     console.log("Handler for .submit() called." + inputPattern);
-    chrome.runtime.sendMessage({greeting: "groupTabs", pattern: inputPattern}, function (response) {});
+    chrome.runtime.sendMessage({greeting: "groupTabs", pattern: inputPattern, "windowId": windowId}, function (response) {});
   });
 
   $('#search-criteria').on('change', function() {
