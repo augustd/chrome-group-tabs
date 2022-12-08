@@ -85,7 +85,8 @@ async function groupTabs(urlPattern, windowId) {
 
           //remember the URL pattern and the new window it was grouped into
           urlsToGroup.push({"urlPattern":urlPattern,"window":window.id});
-          console.log("NEW urlsToGroup: " + JSON.stringify(items.urlsToGroup));
+          console.log("NEW urlsToGroup: ");
+          console.log(urlsToGroup);
           await saveObjectInLocalStorage("urlsToGroup", urlsToGroup);
         });
       }
@@ -333,7 +334,7 @@ chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
             console.error("notFoundWindow(2) called - this should not happen");
             console.error(tab);
             console.error(rule);
-            console.error(items);
+            console.error(urlsToGroup);
             notFoundWindow(tab, rule, urlsToGroup);
           } // END if (foundWindow)
         }); // END chrome.windows.get
@@ -379,7 +380,7 @@ function focusTab(tab) {
     chrome.tabs.highlight({windowId:tab.windowId, tabs:tab.index});
 
     //this is no longer a new tab
-    newTabs.delete(tabId);
+    newTabs.delete(tab.id);
   });
 }
 
@@ -412,7 +413,6 @@ function startup(){
           console.log("NEW urlsToGroup: ");
           console.log(urlsToGroup);
           await saveObjectInLocalStorage("urlsToGroup", urlsToGroup);
-          //chrome.storage.local.set({"urlsToGroup":items.urlsToGroup});
         });
       }
 
