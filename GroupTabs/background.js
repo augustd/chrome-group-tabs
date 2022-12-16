@@ -2,7 +2,6 @@
 // Use of this source code is governed by an Apache-style license that can be
 // found in the LICENSE file.
 
-var alwaysGroup = false;
 var removedTabs = new Set();
 var newTabs = new Set();
 
@@ -247,6 +246,7 @@ async function notFoundWindow(tab, rule, urlsToGroup) {
  */
 chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
   let ts = Date.now();
+  let alwaysGroup = await getObjectFromLocalStorage("alwaysGroup");
   console.log("chrome.tabs.onUpdated: tabId: " + tabId + " status: " + changeInfo.status + " url: " + changeInfo.url + " tab: " + tab.url + " (" + ts + ")");
   console.log("alwaysGroup? " + alwaysGroup + " (" + ts + ")");
   console.log("newTabs? " + newTabs.has(tabId) + " (" + ts + ")");
@@ -342,7 +342,8 @@ chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
   }
 });
 
-chrome.tabs.onCreated.addListener(function(tab) {
+chrome.tabs.onCreated.addListener(async function(tab) {
+  const alwaysGroup = await getObjectFromLocalStorage("alwaysGroup");
   if (alwaysGroup) {
     newTabs.add(tab.id);
   }
@@ -384,12 +385,10 @@ function focusTab(tab) {
   });
 }
 
-function startup(){
-  alert();  //uncoment to break execution in order to launch dev tools at startup
-  return new Promise(function(resolve, reject) {
-    const urlsToGroup = getObjectFromLocalStorage("urlsToGroup");
+async function startup(){
+    const urlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
 
-      for (var i = 0; i < urlsToGroup.length; i++) {
+      for (let i = 0; i < urlsToGroup.length; i++) {
         let urlToGroup = urlsToGroup[i];
         console.log(urlToGroup);
         console.log({url:urlToGroup.urlPattern});
@@ -410,6 +409,7 @@ function startup(){
           urlToGroup.window = foundWindowId;
           console.log("sorted. foundWindowId: " + foundWindowId);
 
+          urlsToGroup[i] = urlToGroup;
           console.log("NEW urlsToGroup: ");
           console.log(urlsToGroup);
           await saveObjectInLocalStorage("urlsToGroup", urlsToGroup);
@@ -417,24 +417,22 @@ function startup(){
       }
 
     //make sure it worked
-    const finalUrlsToGroup = getObjectFromLocalStorage("urlsToGroup");
+    const finalUrlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
     console.log("FINAL urlsToGroup: ");
     console.log(finalUrlsToGroup);
-    return resolve();
-  });
 }
 
 /**
  * Run the startup function
  */
 chrome.runtime.onStartup.addListener(function() {
-  console.log("execute startup");
+  console.log("onStartup");
   const runStartup = startup();
   //wait for startup to complete
   runStartup.then(function() {
     console.log("runStartup complete");
     //enable auto grouping only after startup completes
-    alwaysGroup = true;
+    saveObjectInLocalStorage("alwaysGroup", true);
   });
 });
 
@@ -443,7 +441,11 @@ chrome.runtime.onStartup.addListener(function() {
  * - Allow selecting partial URLs with wildcard
  * - Checkbox to determine whether to always group new tabs that match
  */
-chrome.runtime.onInstalled.addListener(function() {
+chrome.runtime.onInstalled.addListener(async function() {
+  console.log("onInstalled");
+  const alwaysGroup = false;
+  await saveObjectInLocalStorage("alwaysGroup", alwaysGroup);
+
   chrome.contextMenus.create({"title": "Copy Link to this page",
                               "contexts":["all"],
                               "id": "copyLink"});
@@ -455,6 +457,13 @@ chrome.runtime.onInstalled.addListener(function() {
                               "id": "groupTabsAlways",
                               "type": "checkbox",
                               "checked": alwaysGroup});
+
+  await startup();
+
+  console.log("runStartup complete");
+
+  //enable auto grouping only after startup completes
+  await saveObjectInLocalStorage("alwaysGroup", true);
 });
 
 /**
@@ -482,7 +491,8 @@ function groupTabsContextOnClick(pageUrl, tab) {
  * Callback function activated when the context menu item is clicked
  */
 function groupTabsAlwaysOnClick(info, tab) {
-  alwaysGroup = info.checked;
+  const alwaysGroup = info.checked;
+  saveObjectInLocalStorage("alwaysGroup", alwaysGroup);
 }
 
 /**
