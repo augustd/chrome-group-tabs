@@ -5,6 +5,9 @@
 var removedTabs = new Set();
 var newTabs = new Set();
 
+/**
+ * Message dispatcher
+ */
 chrome.runtime.onMessage.addListener(
     async function(request, sender, sendResponse) {
       if (request.greeting == "log") {
@@ -386,53 +389,64 @@ function focusTab(tab) {
 }
 
 async function startup(){
-    const urlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
+  console.log("startup");
 
-      for (let i = 0; i < urlsToGroup.length; i++) {
-        let urlToGroup = urlsToGroup[i];
-        console.log(urlToGroup);
-        console.log({url:urlToGroup.urlPattern});
+  //what was the previous state of alwaysGroup?
+  const originalAlwaysGroup = await getObjectFromLocalStorage("alwaysGroup");
 
-        //see if we already have a window that matches and assign it to the group
-        chrome.tabs.query({url:urlToGroup.urlPattern}, async function(foundTabs) {
-          //count the window IDs for each found tab. Window with greatest frequency becomes the new group window
-          console.log("startup: urlPattern: " + urlToGroup.urlPattern + " foundTabs: " + JSON.stringify(foundTabs));
-          let winMap = new Map();
-          for (var j = 0; j < foundTabs.length; j++) {
-            let foundTab = foundTabs[j];
-            let count = winMap.get(foundTab.windowId);
-            count = (count) ? count : 0;
-            winMap.set(foundTab.windowId, count+1);
-          }
-          let winMapSorted = new Map([...winMap.entries()].sort((a, b) => b[1] - a[1]));
-          let foundWindowId = winMapSorted.keys().next().value;
-          urlToGroup.window = foundWindowId;
-          console.log("sorted. foundWindowId: " + foundWindowId);
+  //disable grouping for now
+  await saveObjectInLocalStorage("alwaysGroup", false);
 
-          urlsToGroup[i] = urlToGroup;
-          console.log("NEW urlsToGroup: ");
-          console.log(urlsToGroup);
-          await saveObjectInLocalStorage("urlsToGroup", urlsToGroup);
-        });
+  //get the set of domains to group
+  const urlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
+
+  for (let i = 0; i < urlsToGroup.length; i++) {
+    let urlToGroup = urlsToGroup[i];
+    console.log(urlToGroup);
+    console.log({url:urlToGroup.urlPattern});
+
+    //see if we already have a window that matches and assign it to the group
+    chrome.tabs.query({url:urlToGroup.urlPattern}, async function(foundTabs) {
+      //count the window IDs for each found tab. Window with greatest frequency becomes the new group window
+      console.log("startup: urlPattern: " + urlToGroup.urlPattern + " foundTabs: " + JSON.stringify(foundTabs));
+      let winMap = new Map();
+      for (var j = 0; j < foundTabs.length; j++) {
+        let foundTab = foundTabs[j];
+        let count = winMap.get(foundTab.windowId);
+        count = (count) ? count : 0;
+        winMap.set(foundTab.windowId, count+1);
       }
+      let winMapSorted = new Map([...winMap.entries()].sort((a, b) => b[1] - a[1]));
+      let foundWindowId = winMapSorted.keys().next().value;
+      urlToGroup.window = foundWindowId;
+      console.log("sorted. foundWindowId: " + foundWindowId);
 
-    //make sure it worked
-    const finalUrlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
-    console.log("FINAL urlsToGroup: ");
-    console.log(finalUrlsToGroup);
+      urlsToGroup[i] = urlToGroup;
+      console.log("NEW urlsToGroup: ");
+      console.log(urlsToGroup);
+      await saveObjectInLocalStorage("urlsToGroup", urlsToGroup);
+    });
+  }
+
+  //make sure it worked
+  const finalUrlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
+  console.log("FINAL urlsToGroup: ");
+  console.log(finalUrlsToGroup);
+
+  //set alwaysGroup back to its original state
+  await saveObjectInLocalStorage("alwaysGroup", originalAlwaysGroup);
 }
 
 /**
  * Run the startup function
  */
-chrome.runtime.onStartup.addListener(function() {
+chrome.runtime.onStartup.addListener(async function() {
   console.log("onStartup");
-  const runStartup = startup();
   //wait for startup to complete
-  runStartup.then(function() {
+  startup().then(async function() {
     console.log("runStartup complete");
     //enable auto grouping only after startup completes
-    saveObjectInLocalStorage("alwaysGroup", true);
+    //await saveObjectInLocalStorage("alwaysGroup", true);
   });
 });
 
@@ -443,8 +457,14 @@ chrome.runtime.onStartup.addListener(function() {
  */
 chrome.runtime.onInstalled.addListener(async function() {
   console.log("onInstalled");
-  const alwaysGroup = false;
-  await saveObjectInLocalStorage("alwaysGroup", alwaysGroup);
+  //const alwaysGroup = false;
+  //await saveObjectInLocalStorage("alwaysGroup", alwaysGroup);
+
+  await startup().then(async function() {
+    console.log("runStartup complete");
+  });
+
+  const alwaysGroup = await getObjectFromLocalStorage("alwaysGroup");
 
   chrome.contextMenus.create({"title": "Copy Link to this page",
                               "contexts":["all"],
@@ -458,12 +478,8 @@ chrome.runtime.onInstalled.addListener(async function() {
                               "type": "checkbox",
                               "checked": alwaysGroup});
 
-  await startup();
-
-  console.log("runStartup complete");
-
   //enable auto grouping only after startup completes
-  await saveObjectInLocalStorage("alwaysGroup", true);
+  //await saveObjectInLocalStorage("alwaysGroup", true);
 });
 
 /**
@@ -490,9 +506,9 @@ function groupTabsContextOnClick(pageUrl, tab) {
 /**
  * Callback function activated when the context menu item is clicked
  */
-function groupTabsAlwaysOnClick(info, tab) {
+async function groupTabsAlwaysOnClick(info, tab) {
   const alwaysGroup = info.checked;
-  saveObjectInLocalStorage("alwaysGroup", alwaysGroup);
+  await saveObjectInLocalStorage("alwaysGroup", alwaysGroup);
 }
 
 /**
@@ -516,7 +532,7 @@ const getObjectFromLocalStorage = async function(key) {
   return new Promise((resolve, reject) => {
     try {
       chrome.storage.local.get(key, function(value) {
-        console.log("getObjectFromLocalStorage");
+        console.log("getObjectFromLocalStorage: " + key);
         console.log(value[key]);
         console.log("type: " + (typeof value[key]));
         if (typeof value[key] === "object") {
@@ -545,7 +561,7 @@ const saveObjectInLocalStorage = async function(key, value) {
     try {
       const valueString = JSON.stringify(value);
 
-      console.log("saveObjectInLocalStorage: " + valueString);
+      console.log("saveObjectInLocalStorage: " + key + "=" + valueString);
 
       chrome.storage.local.set({[key]:valueString}, function() {
         resolve();
