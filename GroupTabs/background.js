@@ -464,7 +464,8 @@ chrome.runtime.onInstalled.addListener(async function() {
     console.log("runStartup complete");
   });
 
-  const alwaysGroup = await getObjectFromLocalStorage("alwaysGroup");
+  let alwaysGroup = false;
+  alwaysGroup = await getObjectFromLocalStorage("alwaysGroup");
 
   chrome.contextMenus.create({"title": "Copy Link to this page",
                               "contexts":["all"],
@@ -542,6 +543,8 @@ const getObjectFromLocalStorage = async function(key) {
           const output = JSON.parse(value[key]);
           console.log(output);
           resolve(output);
+        } else if ("urlsToGroup" === key) {
+          resolve([]);
         } else {
           resolve({});
         }
