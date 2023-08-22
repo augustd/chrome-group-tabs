@@ -151,6 +151,9 @@ async function getTabWindow(tabUrl, windowId, callback) {
       //check that the window still exists
       console.log("checking for existing window for rule: ");
       console.log(rule);
+      if (rule.window === undefined) {
+        rule.window = 0;  //handle default case
+      }
       chrome.windows.get(rule.window, {populate:true}, function(foundWindow){
         if (foundWindow) {
           console.log("FOUND! " + foundWindow);

@@ -239,6 +239,7 @@ $(document).ready(function(){
     $('#groupRegexForm').toggle();
   });
 
+  //handle Custom group actions
   $('#groupRegexForm').submit(function(event) {
     event.preventDefault();
     const inputPattern = $('#groupRegexInput').val();
