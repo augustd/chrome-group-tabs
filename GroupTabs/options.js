@@ -69,7 +69,12 @@ async function restore_options() {
             tabUI.setAttribute("title", tab.title);
             console.log(tab);
             //this renders the actual tab
-            tabUI.innerHTML = '<img src="' + tab.favIconUrl + '" class="fav"><div class="title">' + tab.title + '</div><div class="copy"></div><div class="reload"></div><div class="close"></div>';
+            if (tab.favIconUrl) {
+              tabUI.innerHTML = '<img src="' + tab.favIconUrl + '" class="fav">';
+            } else {
+              tabUI.innerHTML = '<div class="fav">';
+            }
+            tabUI.innerHTML += '<div class="title">' + tab.title + '</div><div class="copy"></div><div class="reload"></div><div class="close"></div>';
 
             $(tabUI).hover(function(){
               $(this).find( ".close" ).show().click(function() {
