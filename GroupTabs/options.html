@@ -5,9 +5,14 @@
   <style>
     body { padding: 10px; min-width: 400px !important; min-height: 400px !important; }
     h3 {display: flex;}
-    div.win, div.patterns {margin: 10px; border: solid 1px; padding: 5px; background: #eaeef3;}
-    div.patterns {display:none;}
-    div.tab, div.pattern {margin: 1px; border: solid 1px; padding: 5px; background: #ffffff; position: relative }
+    .patterns {margin: 10px; border: solid 1px; padding: 5px; background: #eaeef3;}
+    .win {margin: 10px; border: solid 1px; padding: 5px; background: #eaeef3; display: none}
+    .win:has(.visible) {
+      display: block;
+    }
+    .hidden {display: none;}
+    .visible {display: block !important;}
+    div.tab, div.pattern {margin: 1px; border: solid 1px; padding: 5px; background: #ffffff; position: relative; display: none }
     div.winTitle {
       margin-top: -6px;
       margin-left: -6px;
@@ -31,7 +36,10 @@
       width: 16px;
       height: 16px;
     }
-    .close:hover {
+    div.tab:hover .close, div.tab:hover .reload, div.tab:hover .copy {
+      display: block;
+    }
+    div.pattern:hover .close, div.pattern:hover .reload {
       display: block;
     }
     .reload {
@@ -84,9 +92,6 @@
     #groupRegexForm {
       display: none;
     }
-    #windows {
-      display: none;
-    }
   </style>
 </head>
 
@@ -98,20 +103,19 @@
   <form id="groupRegexForm">
     <input id="groupRegexInput" type="text" name="groupRegexInput">
     <input id="windowId" type="text" name="windowId">
-    <input type="submit" name="submit" value="&gt;">
+    <input id="groupRegexFormSubmit" type="submit" name="submit" value="&gt;">
   </form>
 
 
   <h3><div id="patterns-toggle" class="collapsed toggle"></div>Grouped Patterns:</h3>
-  <div id="patterns" class="patterns"></div>
+  <div id="patterns" class="patterns hidden"></div>
 
   <h3><div id="windows-toggle" class="shown toggle"></div>Open Windows:</h3>
-  <div id="search">Search: <input id="search-criteria" type="text"></div>
-  <div id="windows"></div>
+  <div id="search" class="visible">Search: <input id="search-criteria" type="text"></div>
+  <div id="windows" class="visible"></div>
 
-  <script src="scripts/jquery-3.2.1.min.js"></script>
   <script src="background.js"></script>
-  <script src="options.js"></script>
+  <script src="options_nojq.js"></script>
 
 </body>
 </html>
