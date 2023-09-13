@@ -5,6 +5,19 @@
 var removedTabs = new Set();
 var newTabs = new Set();
 
+
+const preloadHTML = async () => {
+  if (!await chrome.offscreen.hasDocument()) {
+    await chrome.offscreen.createDocument({
+      url: "options.html",
+      reasons: [chrome.offscreen.Reason.DISPLAY_MEDIA],
+      justification: "Helps with faster load times of popup"
+    })
+  }
+}
+
+preloadHTML();
+
 /**
  * Message dispatcher
  */
@@ -536,19 +549,24 @@ const getObjectFromLocalStorage = async function(key) {
   return new Promise((resolve, reject) => {
     try {
       chrome.storage.local.get(key, function(value) {
+        console.time("getObjectFromLocalStorage: " + key);
         console.log("getObjectFromLocalStorage: " + key);
         console.log(value[key]);
         console.log("type: " + (typeof value[key]));
         if (typeof value[key] === "object") {
           console.log(value[key]);
+          console.timeEnd("getObjectFromLocalStorage: " + key);
           resolve(value[key]);
         } else if (value[key]) {
           const output = JSON.parse(value[key]);
           console.log(output);
+          console.timeEnd("getObjectFromLocalStorage: " + key);
           resolve(output);
         } else if ("urlsToGroup" === key) {
+          console.timeEnd("getObjectFromLocalStorage: " + key);
           resolve([]);
         } else {
+          console.timeEnd("getObjectFromLocalStorage: " + key);
           resolve({});
         }
       });

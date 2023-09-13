@@ -14,7 +14,7 @@
     "default_title": "GroupTabs",
     "default_popup": "options.html"
   },
-  "permissions": ["tabs","contextMenus","storage","alarms","clipboardWrite"],
+  "permissions": ["tabs","contextMenus","storage","alarms","clipboardWrite", "offscreen"],
   "content_scripts": [
     {
       "matches": ["https://*/*"],
