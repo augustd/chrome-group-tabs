@@ -38,6 +38,9 @@ async function restore_options() {
 
   //populate the UI with a list of all windows
   const windowsUI = document.getElementById('windows');
+  let windowCount = 0;
+  let tabCount = 0;
+
   chrome.windows.getCurrent(function (currentWindow) {
     chrome.windows.getAll({'populate': true}, function (winArray) {
 
@@ -47,8 +50,9 @@ async function restore_options() {
 
         return 1;
       });
-      for (var i = 0; i < winArray.length; i++) {
+      for (let i = 0; i < winArray.length; i++) {
         const window = winArray[i];
+        windowCount++;
 
         const winUI = document.createElement('div');
         winUI.className = "win";
@@ -59,10 +63,11 @@ async function restore_options() {
           winUI.innerHTML = '<div class="winTitle">Grouped Window - pattern: ' + groupUrl.urlPattern + '</div>';
         }
 
-        for (var j = 0; j < window.tabs.length; j++) {
+        for (let j = 0; j < window.tabs.length; j++) {
           const tab = window.tabs[j];
-          const tabUI = document.createElement('div');
+          tabCount++;
 
+          const tabUI = document.createElement('div');
           tabUI.classList.add("tab", "visible");
           tabUI.setAttribute("tabId", tab.id);
           tabUI.setAttribute("winId", window.id);
@@ -111,6 +116,10 @@ async function restore_options() {
 
         windowsUI.appendChild(winUI);
       }
+
+      //populate a message containing the count of windows and tabs.
+      document.getElementById("windowCount").innerText = windowCount;
+      document.getElementById("tabCount").innerText = tabCount;
     });
   });
 }
