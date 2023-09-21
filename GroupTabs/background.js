@@ -295,25 +295,24 @@ chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
         chrome.windows.get(rule.window, {populate: true}, function (foundWindow) {
           console.log("foundWindow: " + JSON.stringify(foundWindow) + " (" + ts + ")");
           if (foundWindow) {
-            //Check for whether the new URL matches an existing tab
-            //separate fragment for proper search matching
-            var searchUrl = changeInfo.url.split('#')[0];
-            var searchFrag = changeInfo.url.split('#')[1];
-            console.log("searchFrag: " + searchFrag + " (" + ts + ")");
+            //get a proper URL object
+            const url = new URL(changeInfo.url);
 
-            //TODO: how do we handle GET query params on the same URL? For example, ?ts=78123768
+            //Get URL to search for, excluding query params and fragment
+            //Add wildcard to account for existing windows with parameters
+            const searchUrl = url.protocol + '//' + url.host + url.pathname + "*";
 
             //Look for existing tabs with the same URL
             console.log("chrome.tabs.query() params: " + searchUrl + " (" + ts + ")");
             chrome.tabs.query({"url": searchUrl, "windowId": foundWindow.id}, function (tabs) {
               console.log("chrome.tabs.query() result: (" + tabs.length + ")" + JSON.stringify(tabs) + " (" + ts + ")");
-              tabs = tabs.filter(t => t.id != tab.id);  //filter out the tab that is being updated
+              tabs = tabs.filter(t => t.id !== tab.id);  //filter out the tab that is being updated
               console.log("chrome.tabs.query() filter result: (" + tabs.length + ")" + JSON.stringify(tabs) + " (" + ts + ")");
 
               //existing tabs found with same URL
               if (tabs.length > 0) { // && tabs[0].status === "complete") {
-                for (var t = 0; t < tabs.length; t++) {
-                  var foundTab = tabs[t];
+                for (let t = 0; t < tabs.length; t++) {
+                  const foundTab = tabs[t];
                   console.log("checking foundTab in tabs: " + JSON.stringify(foundTab) + " (" + ts + ") t: " + t);
                   //remove existing tab and move new tab into old one's position
                   let tabIndex = foundTab.index;
