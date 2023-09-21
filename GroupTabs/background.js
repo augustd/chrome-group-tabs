@@ -2,8 +2,8 @@
 // Use of this source code is governed by an Apache-style license that can be
 // found in the LICENSE file.
 
-var removedTabs = new Set();
-var newTabs = new Set();
+const removedTabs = new Set();
+const newTabs = new Set();
 
 
 const preloadHTML = async () => {
@@ -41,7 +41,7 @@ chrome.runtime.onMessage.addListener(
  *   is found.
  */
 function getCurrentTabDomain(callback) {
-  var queryInfo = {
+  const queryInfo = {
     active: true,
     currentWindow: true
   };
@@ -49,13 +49,13 @@ function getCurrentTabDomain(callback) {
   chrome.tabs.query(queryInfo, function(tabs) {
     // A window can only have one active tab at a time, so the array consists of
     // exactly one tab.
-    var tab = tabs[0];
+    const tab = tabs[0];
 
     // Get the tab URL
-    var url = tab.url;
+    const url = new URL(tab.url);
 
     //get the domain from the URL
-    var domain = url.match(/^[\w-]+:\/{2,}\[?([\w\.:-]+)\]?(?::[0-9]*)?/)[1];
+    const domain = url.host;
 
     callback(domain);
   });
@@ -82,7 +82,7 @@ async function groupTabs(urlPattern, windowId) {
 
       } else {
         //no existing window for this pattern so create a new window
-        var tabId = (tabs.length > 0) ? tabs[0].id : null;
+        const tabId = (tabs.length > 0) ? tabs[0].id : null;
         chrome.windows.create({"tabId":tabId}, async function(window){
 
           console.log("window: " + JSON.stringify(window));
@@ -137,12 +137,12 @@ async function getTabWindow(tabUrl, windowId, callback) {
   if (windowId) windowId = parseInt(windowId); //needs to be a number for chrome.tabs.get
 
   //are we dealing with a new regex?
-  var match = false;
+  let match = false;
   const urlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
   console.log("urlsToGroup:");
   console.log(urlsToGroup);
-  for (var i = 0; i < urlsToGroup.length; i++) {
-    var rule = urlsToGroup[i];
+  for (let i = 0; i < urlsToGroup.length; i++) {
+    const rule = urlsToGroup[i];
     console.log("rule: " + JSON.stringify(rule));
     if (matchRuleShort(tabUrl, rule.urlPattern)) {
       //the new tab URL matches an existing group.
@@ -223,8 +223,8 @@ async function getTabWindow(tabUrl, windowId, callback) {
  * Move an array of tabs to a destination window
  */
 function moveTabs(tabs, destination) {
-  for (var i = 0; i < tabs.length; i++) {
-    var tab = tabs[i];
+  for (let i = 0; i < tabs.length; i++) {
+    const tab = tabs[i];
     if (tab.pinned) {
       continue; //skip pinned tabs
     }
@@ -281,9 +281,9 @@ chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
       console.log("rules: " + JSON.stringify(rules) + " (" + ts + ")");
       if (rules.length < 1) return; //no matching rule for this URL, nothing to do
 
-      //TODO: How do we distinguish between multiple match rules on the same domain? find the longest match rule?
-      var rule = rules[0];
-      //the new tab URL matches an existing group.
+    //TODO: How do we distinguish between multiple match rules on the same domain? find the longest match rule?
+    const rule = rules[0];
+    //the new tab URL matches an existing group.
       console.log("match!" + " (" + ts + ")");
 
       //check that the window still exists
@@ -378,7 +378,7 @@ chrome.windows.onRemoved.addListener(async function(winId) {
   //remember the URL pattern and the new window it was grouped into
   const urlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
 
-  for (var i = 0; i < urlsToGroup.length; i++) {
+  for (let i = 0; i < urlsToGroup.length; i++) {
     if (urlsToGroup[i].windowId === winId) {
       delete urlsToGroup[i].windowId;
       break;
@@ -425,7 +425,7 @@ async function startup(){
       //count the window IDs for each found tab. Window with greatest frequency becomes the new group window
       console.log("startup: urlPattern: " + urlToGroup.urlPattern + " foundTabs: " + JSON.stringify(foundTabs));
       let winMap = new Map();
-      for (var j = 0; j < foundTabs.length; j++) {
+      for (let j = 0; j < foundTabs.length; j++) {
         let foundTab = foundTabs[j];
         let count = winMap.get(foundTab.windowId);
         count = (count) ? count : 0;
@@ -515,7 +515,7 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
  * Callback function activated when the context menu item is clicked
  */
 function groupTabsContextOnClick(pageUrl, tab) {
-  var regex = window.prompt('Enter URL regex to group (Use * for wildcard)', pageUrl);
+  const regex = window.prompt('Enter URL regex to group (Use * for wildcard)', pageUrl);
   if (regex) groupTabs(regex);
 }
 

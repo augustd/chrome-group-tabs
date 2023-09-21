@@ -149,14 +149,16 @@ const sendCopyMessage = function(title, url) {
 }
 
 function getUrlByWindowId(urls, winId) {
-  var array = urls.filter(function(urls){ return urls.window === winId; });
+  const array = urls.filter(function (urls) {
+    return urls.window === winId;
+  });
   return array[0];
 }
 
-var ready = (callback) => {
+const ready = (callback) => {
   if (document.readyState !== "loading") callback();
   else document.addEventListener("DOMContentLoaded", callback);
-}
+};
 
 ready(() => {
   console.log("ready");
@@ -201,7 +203,7 @@ ready(() => {
 
   document.getElementById("groupThis").addEventListener("click", function(){
     getCurrentTabDomain(function(domain) {
-      var urlPattern = "*://" + domain + "/*";
+      const urlPattern = "*://" + domain + "/*";
       chrome.runtime.sendMessage({greeting: "groupTabs", pattern: urlPattern}, function (response) {});
     });
   });
