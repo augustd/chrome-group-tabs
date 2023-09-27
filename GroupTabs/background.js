@@ -8,18 +8,6 @@ const removedTabs = new Set();
 const newTabs = new Set();
 
 
-// const preloadHTML = async () => {
-//   if (!await chrome.offscreen.hasDocument()) {
-//     await chrome.offscreen.createDocument({
-//       url: "options.html",
-//       reasons: [chrome.offscreen.Reason.DISPLAY_MEDIA],
-//       justification: "Helps with faster load times of popup"
-//     })
-//   }
-// }
-//
-// preloadHTML();
-
 /**
  * Message dispatcher
  */
@@ -35,33 +23,6 @@ chrome.runtime.onMessage.addListener(
       }
     }
 );
-
-/**
- * Parses the domain name from the URL of the current tab.
- *
- * @param {function(string)} callback - called when the domain of the current tab
- *   is found.
- */
-function getCurrentTabDomain(callback) {
-  const queryInfo = {
-    active: true,
-    currentWindow: true
-  };
-
-  chrome.tabs.query(queryInfo, function(tabs) {
-    // A window can only have one active tab at a time, so the array consists of
-    // exactly one tab.
-    const tab = tabs[0];
-
-    // Get the tab URL
-    const url = new URL(tab.url);
-
-    //get the domain from the URL
-    const domain = url.host;
-
-    callback(domain);
-  });
-}
 
 /**
  * Groups all tabs with URLs matching a pattern into the same window
@@ -541,4 +502,3 @@ async function copyLink(url, tab) {
     console.log(response);
   });
 }
-

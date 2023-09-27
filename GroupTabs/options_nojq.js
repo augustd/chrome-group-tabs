@@ -44,7 +44,8 @@ async function restore_options() {
     });
 
     patternUI.querySelector(".reload").addEventListener("click", function () {
-      groupTabs(pattern.urlPattern);
+      chrome.runtime.sendMessage({greeting: "groupTabs", pattern: pattern.urlPattern}, function (response) {
+      });
     });
 
   });
@@ -298,3 +299,31 @@ ready(() => {
     });
   });
 });
+
+/**
+ * Parses the domain name from the URL of the current tab.
+ *
+ * @param {function(string)} callback - called when the domain of the current tab
+ *   is found.
+ */
+function getCurrentTabDomain(callback) {
+  const queryInfo = {
+    active: true,
+    currentWindow: true
+  };
+
+  chrome.tabs.query(queryInfo, function(tabs) {
+    // A window can only have one active tab at a time, so the array consists of
+    // exactly one tab.
+    const tab = tabs[0];
+
+    // Get the tab URL
+    const url = new URL(tab.url);
+
+    //get the domain from the URL
+    const domain = url.host;
+
+    callback(domain);
+  });
+}
+
