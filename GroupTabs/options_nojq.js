@@ -248,14 +248,13 @@ ready(() => {
   //handle tab search actions
   const searchCriteria = document.getElementById("search-criteria");
   searchCriteria.addEventListener("change", function() {
-    const searchString = searchCriteria.value;
+    const searchString = searchCriteria.value.toLowerCase();
 
     document.querySelectorAll(".win").forEach(function(win) {
       const tabArray = Array.from(win.children);
       tabArray.forEach((child) => {
         const textContent = (child.textContent || child.innerText).toLowerCase();
         const tabUrl = (child.getAttribute("url") || '').toLowerCase();
-
 
         // Check if the text content contains the search string
         if (textContent.includes(searchString) || tabUrl.includes(searchString)) {
