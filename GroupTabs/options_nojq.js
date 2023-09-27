@@ -7,8 +7,21 @@ async function restore_options() {
   urlsToGroup.forEach(function (pattern) {
     const patternUI = document.createElement('div');
     patternUI.classList.add("pattern", "visible");
-    //patternUI.textContent = pattern.urlPattern;
-    patternUI.innerHTML = '<div class="title">' + pattern.urlPattern + '</div><div class="reload"></div><div class="close"></div>';
+
+    const title = document.createElement('div');
+    title.classList.add('title');
+    title.textContent = pattern.urlPattern;
+
+    const reload = document.createElement('div');
+    reload.classList.add('reload');
+
+    const close = document.createElement('div');
+    close.classList.add('close');
+
+    patternUI.appendChild(title);
+    patternUI.appendChild(reload);
+    patternUI.appendChild(close);
+
     patternUI.setAttribute("winId", pattern.window);
     patternUI.addEventListener("click", function () {
       chrome.windows.update(parseInt(pattern.window), {focused: true});
@@ -58,9 +71,15 @@ async function restore_options() {
         winUI.className = "win";
         winUI.setAttribute("winId", window.id);
 
+        windowsUI.appendChild(winUI);
+
         const groupUrl = getUrlByWindowId(urlsToGroup, window.id);
         if (groupUrl) {
-          winUI.innerHTML = '<div class="winTitle">Grouped Window - pattern: ' + groupUrl.urlPattern + '</div>';
+          const winTitle = document.createElement('div');
+          winTitle.classList.add('winTitle');
+          winTitle.textContent = 'Grouped Window - pattern: ' + groupUrl.urlPattern;
+
+          winUI.appendChild(winTitle);
         }
 
         for (let j = 0; j < window.tabs.length; j++) {
@@ -74,13 +93,35 @@ async function restore_options() {
           tabUI.setAttribute("url", tab.url);
           tabUI.setAttribute("title", tab.title);
           console.log(tab);
+
           //this renders the actual tab
           if (tab.favIconUrl) {
-            tabUI.innerHTML = '<img src="' + tab.favIconUrl + '" class="fav">';
+            const favIcon = document.createElement('img');
+            favIcon.setAttribute('src', tab.favIconUrl);
+            favIcon.classList.add('fav');
+            tabUI.appendChild(favIcon);
           } else {
-            tabUI.innerHTML = '<div class="fav">';
+            const favDiv = document.createElement('div');
+            favDiv.classList.add('fav');
+            tabUI.appendChild(favDiv);
           }
-          tabUI.innerHTML += '<div class="title">' + tab.title + '</div><div class="copy"></div><div class="reload"></div><div class="close"></div>';
+
+          const title = document.createElement('div');
+          title.classList.add('title');
+          title.textContent = tab.title;
+          tabUI.appendChild(title);
+
+          const copy = document.createElement('div');
+          copy.classList.add('copy');
+          tabUI.appendChild(copy);
+
+          const reload = document.createElement('div');
+          reload.classList.add('reload');
+          tabUI.appendChild(reload);
+
+          const close = document.createElement('div');
+          close.classList.add('close');
+          tabUI.appendChild(close);
 
           tabUI.addEventListener("click", function(){
             console.log("tabUI clicked");
@@ -88,7 +129,7 @@ async function restore_options() {
             chrome.tabs.update(tab.id, {selected:true});
           });
 
-          tabUI.querySelector(".close").addEventListener("click", function (event) {
+          close.addEventListener("click", function (event) {
             chrome.tabs.remove(tab.id);
             if (tabUI.parentElement.children.length > 1) {
               tabUI.remove(); //remove the one tab UI
@@ -98,12 +139,12 @@ async function restore_options() {
             event.stopPropagation();
           });
 
-          tabUI.querySelector(".reload").addEventListener("click", function () {
+          reload.addEventListener("click", function () {
             chrome.tabs.reload(tab.id);
           });
 
-          tabUI.querySelector(".copy").addEventListener("click", async function (event) {
-            //make sure this even does not propagate: that could cause us to lose focus on this tab
+          copy.addEventListener("click", async function (event) {
+            //make sure this event does not propagate: that could cause us to lose focus on this tab
             //(e.g. swtiching to the clicked tab) and then the content script won't work.
             event.stopPropagation();
 
@@ -114,7 +155,6 @@ async function restore_options() {
           winUI.appendChild(tabUI);
         }
 
-        windowsUI.appendChild(winUI);
       }
 
       //populate a message containing the count of windows and tabs.
@@ -162,22 +202,7 @@ const ready = (callback) => {
 
 ready(() => {
   console.log("ready");
-  restore_options().then(() => {
-      document.querySelectorAll(".close").forEach(function(item) {
-        item.addEventListener("click", function() {
-          console.log("close");
-          const tabId = parseInt(item.parentElement.getAttribute('tabid'));
-          console.log("close tab: " + tabId);
-          chrome.tabs.remove(tabId);
-          if (item.parentElement.parentElement.children.length > 1) {
-            item.parentElement.remove(); //remove the one tab UI
-          } else {
-            item.parentElement.parentElement.remove(); //remove the whole window UI
-          }
-        });
-      });
-
-  });
+  restore_options();
 
   document.getElementById("patterns-toggle").addEventListener("click", function() {
     if (document.getElementById("patterns-toggle").classList.contains("shown")) {
