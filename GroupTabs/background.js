@@ -240,9 +240,26 @@ chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
 
     const urlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
 
-      let rules = urlsToGroup.filter(rule => matchRuleShort(changeInfo.url, rule.urlPattern));
-      console.log("rules: " + JSON.stringify(rules) + " (" + ts + ")");
-      if (rules.length < 1) return; //no matching rule for this URL, nothing to do
+    //get a proper URL object
+    const url = new URL(changeInfo.url);
+
+    //google wraps every URL with its scraper, remove that
+    let unwrappedUrl = url;
+    console.log("url: host: " + url.host + " pathname: " + url.pathname);
+    if (url.host === "www.google.com" && url.pathname === "/url") {
+      const searchParams = url.searchParams;
+      console.log("url: q: " + searchParams.get("q"));
+      if (searchParams && searchParams.get("q")) {
+        unwrappedUrl = new URL(searchParams.get("q"));
+      }
+    }
+
+    console.log("Original URL:  " + url);
+    console.log("Unwrapped URL: " + unwrappedUrl);
+
+    let rules = urlsToGroup.filter(rule => matchRuleShort(unwrappedUrl.href, rule.urlPattern));
+    console.log("rules: " + JSON.stringify(rules) + " (" + ts + ")");
+    if (rules.length < 1) return; //no matching rule for this URL, nothing to do
 
     //TODO: How do we distinguish between multiple match rules on the same domain? find the longest match rule?
     const rule = rules[0];
@@ -258,12 +275,10 @@ chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
         chrome.windows.get(rule.window, {populate: true}, function (foundWindow) {
           console.log("foundWindow: " + JSON.stringify(foundWindow) + " (" + ts + ")");
           if (foundWindow) {
-            //get a proper URL object
-            const url = new URL(changeInfo.url);
 
             //Get URL to search for, excluding query params and fragment
             //Add wildcard to account for existing windows with parameters
-            const searchUrl = url.protocol + '//' + url.host + url.pathname + "*";
+            const searchUrl = unwrappedUrl.protocol + '//' + unwrappedUrl.host + unwrappedUrl.pathname + "*";
 
             //Look for existing tabs with the same URL
             console.log("chrome.tabs.query() params: " + searchUrl + " (" + ts + ")");
@@ -296,7 +311,7 @@ chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
                     focusTab(movedTab);
                   });
                 }
-              } else if (tab.windowId == foundWindow.id) {
+              } else if (tab.windowId === foundWindow.id) {
                 //tab already exists, it is in the group window already, focus it
                 console.log("about to call focusTab from within move(2)");
                 focusTab(tab);
