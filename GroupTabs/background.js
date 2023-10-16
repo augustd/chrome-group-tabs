@@ -257,6 +257,7 @@ chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
     console.log("Original URL:  " + url);
     console.log("Unwrapped URL: " + unwrappedUrl);
 
+    //does this new URL match one of the URLs we are supposed to group?
     let rules = urlsToGroup.filter(rule => matchRuleShort(unwrappedUrl.href, rule.urlPattern));
     console.log("rules: " + JSON.stringify(rules) + " (" + ts + ")");
     if (rules.length < 1) return; //no matching rule for this URL, nothing to do
@@ -268,13 +269,16 @@ chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
 
       //check that the window still exists
       if (typeof(rule.window) === 'undefined') {
+        //we have a rule, but the rule does not have a window ID assigned to it
         notFoundWindow(tab, rule, urlsToGroup);
       } else {
         //TODO: Fix this ugly branching
         //TODO: implement windows.onRemoved to curate this list so we don't have to make this call
+        //we have a rule with a window ID assigned, so get the window by ID
         chrome.windows.get(rule.window, {populate: true}, function (foundWindow) {
           console.log("foundWindow: " + JSON.stringify(foundWindow) + " (" + ts + ")");
           if (foundWindow) {
+            //an existing window was found with that ID
 
             //Get URL to search for, excluding query params and fragment
             //Add wildcard to account for existing windows with parameters
@@ -327,6 +331,7 @@ chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
             });
 
           } else {
+            //no window was found with the specified ID
             console.error("notFoundWindow(2) called - this should not happen");
             console.error(tab);
             console.error(rule);
@@ -357,8 +362,8 @@ chrome.windows.onRemoved.addListener(async function(winId) {
   const urlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
 
   for (let i = 0; i < urlsToGroup.length; i++) {
-    if (urlsToGroup[i].windowId === winId) {
-      delete urlsToGroup[i].windowId;
+    if (urlsToGroup[i].window === winId) {
+      delete urlsToGroup[i].window;
       break;
     }
   }
