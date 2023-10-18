@@ -203,9 +203,10 @@ function matchRuleShort(str, rule) {
 }
 
 async function notFoundWindow(tab, rule, urlsToGroup) {
-  console.log("NOT foundWindow");
+  console.log("NOT foundWindow: rule: ");
+  console.log(rule);
   //create a new window with the new tab
-  chrome.windows.create({"tabId": tab.id}, async function (newWindow) {
+  chrome.windows.create({"tabId": tab.id, width:rule.width, height:rule.height, top:rule.top, left:rule.left}, async function (newWindow) {
     console.log("New window created: " + newWindow.id + " rule: " + JSON.stringify(rule));
 
     //reassign the group pattern to the new window
@@ -372,6 +373,29 @@ chrome.windows.onRemoved.addListener(async function(winId) {
   await saveObjectInLocalStorage("urlsToGroup", urlsToGroup);
   //})
 });
+
+chrome.windows.onBoundsChanged.addListener( async function(window) {
+  console.log("chrome.windows.onBoundsChanged: winId: " + window.id);
+
+  //get the list of URLs to group
+  const urlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
+
+  //is the newly resized window one of the ones we care about?
+  for (let i = 0; i < urlsToGroup.length; i++) {
+    if (urlsToGroup[i].window === window.id) {
+      urlsToGroup[i].top = window.top;
+      urlsToGroup[i].left = window.left;
+      urlsToGroup[i].height = window.height;
+      urlsToGroup[i].width = window.width;
+
+      console.log("NEW urlsToGroup: ");
+      console.log(urlsToGroup);
+      await saveObjectInLocalStorage("urlsToGroup", urlsToGroup);
+
+      break;
+    }
+  }
+})
 
 /**
  * Give focus to a particular tab
