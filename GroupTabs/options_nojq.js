@@ -18,7 +18,11 @@ async function restore_options() {
     const close = document.createElement('div');
     close.classList.add('close');
 
+    const edit = document.createElement('div');
+    edit.classList.add('edit');
+
     patternUI.appendChild(title);
+    patternUI.appendChild(edit);
     patternUI.appendChild(reload);
     patternUI.appendChild(close);
 
@@ -46,6 +50,23 @@ async function restore_options() {
     patternUI.querySelector(".reload").addEventListener("click", function () {
       chrome.runtime.sendMessage({greeting: "groupTabs", pattern: pattern.urlPattern}, function (response) {
       });
+    });
+
+    patternUI.querySelector(".edit").addEventListener("click", function (event) {
+      event.stopPropagation();
+
+      const groupRegexForm = document.getElementById("groupRegexForm");
+      const groupRegexInput = document.getElementById("groupRegexInput");
+      const windowIdInput = document.getElementById("windowId");
+
+      const titleElement = patternUI.querySelector(".title");
+
+      // Populate the form inputs with data
+      groupRegexInput.value = titleElement.textContent;
+      windowIdInput.value = patternUI.getAttribute("winid");
+
+      // Make the form visible
+      groupRegexForm.style.display = "block";
     });
 
   });

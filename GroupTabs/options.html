@@ -36,7 +36,7 @@
     div.tab:hover .close, div.tab:hover .reload, div.tab:hover .copy {
       display: block;
     }
-    div.pattern:hover .close, div.pattern:hover .reload {
+    div.pattern:hover .close, div.pattern:hover .reload, div.pattern:hover .edit {
       display: block;
     }
     .reload {
@@ -63,6 +63,19 @@
       height: 16px;
     }
     .copy:hover {
+      display: block;
+    }
+    .edit {
+      display: none;
+      position: absolute;
+      right: 40px;
+      top: 4px;
+      z-index: 1000;
+      background-image: url("data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/PjxzdmcgY2xhc3M9ImZlYXRoZXIgZmVhdGhlci1lZGl0IiBmaWxsPSJ3aGl0ZSIgaGVpZ2h0PSIxNiIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIiB2aWV3Qm94PSIwIDAgMjQgMjQiIHdpZHRoPSIxNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTEgNEg0YTIgMiAwIDAgMC0yIDJ2MTRhMiAyIDAgMCAwIDIgMmgxNGEyIDIgMCAwIDAgMi0ydi03Ii8+PHBhdGggZD0iTTE4LjUgMi41YTIuMTIxIDIuMTIxIDAgMCAxIDMgM0wxMiAxNWwtNCAxIDEtNCA5LjUtOS41eiIvPjwvc3ZnPg==");
+      width: 16px;
+      height: 16px;
+    }
+    .edit:hover {
       display: block;
     }
     .toggle {display: block;}
