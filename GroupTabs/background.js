@@ -47,8 +47,12 @@ async function groupTabs(urlPattern, windowId) {
         //no existing window for this pattern so create a new window
         const tabId = (tabs.length > 0) ? tabs[0].id : null;
         chrome.windows.create({"tabId":tabId}, async function(window){
-
           console.log("window: " + JSON.stringify(window));
+
+          //new windows are always created with a blank tab. If we have passed in a tab, remove the blank one
+          if (tabId !== null) {
+            window.tabs[0].remove();
+          }
 
           //remove the first element from the tabs array -it has already been added to the window
           //tabs.splice(0,1);
