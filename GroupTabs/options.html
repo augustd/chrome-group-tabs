@@ -36,7 +36,7 @@
     div.tab:hover .close, div.tab:hover .reload, div.tab:hover .copy {
       display: block;
     }
-    div.pattern:hover .close, div.pattern:hover .reload, div.pattern:hover .edit {
+    div.pattern:hover .close, div.pattern:hover .reload, div.pattern:hover .edit, div.pattern:hover .reassign {
       display: block;
     }
     .reload {
@@ -76,6 +76,19 @@
       height: 16px;
     }
     .edit:hover {
+      display: block;
+    }
+    .reassign {
+      display: none;
+      position: absolute;
+      right: 58px;
+      top: 4px;
+      z-index: 1000;
+      background-image: url("data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iMTZweCIgaGVpZ2h0PSIxNnB4IiB2aWV3Qm94PSIwIDAgMTYgMTYiIHZlcnNpb249IjEuMSI+CjxnIGlkPSJzdXJmYWNlMSI+CjxwYXRoIHN0eWxlPSIgc3Ryb2tlOm5vbmU7ZmlsbC1ydWxlOm5vbnplcm87ZmlsbDpyZ2IoMCUsMCUsMCUpO2ZpbGwtb3BhY2l0eToxOyIgZD0iTSA0IDIuNjY3OTY5IEwgMTIgMi42Njc5NjkgTCAxMiA0IEwgNCA0IFogTSA3LjMzMjAzMSA5LjMzMjAzMSBMIDcuMzMyMDMxIDEzLjMzMjAzMSBMIDguNjY3OTY5IDEzLjMzMjAzMSBMIDguNjY3OTY5IDkuMzMyMDMxIEwgMTIgOS4zMzIwMzEgTCA4IDUuMzMyMDMxIEwgNCA5LjMzMjAzMSBaIE0gNy4zMzIwMzEgOS4zMzIwMzEgIi8+CjwvZz4KPC9zdmc+Cg==");
+      width: 16px;
+      height: 16px;
+    }
+    .reassign:hover {
       display: block;
     }
     .toggle {display: block;}

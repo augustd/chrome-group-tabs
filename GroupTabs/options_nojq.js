@@ -21,10 +21,14 @@ async function restore_options() {
     const edit = document.createElement('div');
     edit.classList.add('edit');
 
+    const reassign = document.createElement('div');
+    reassign.classList.add('reassign');
+
     patternUI.appendChild(title);
     patternUI.appendChild(edit);
     patternUI.appendChild(reload);
     patternUI.appendChild(close);
+    patternUI.appendChild(reassign);
 
     patternUI.setAttribute("winId", pattern.window);
     patternUI.addEventListener("click", function () {
@@ -67,6 +71,23 @@ async function restore_options() {
 
       // Make the form visible
       groupRegexForm.style.display = "block";
+    });
+
+    patternUI.querySelector(".reassign").addEventListener("click", async function (event) {
+      chrome.windows.getCurrent({}, async function(window) {
+        const urlPatternToUpdate = patternUI.querySelector(".title").textContent;
+
+        //get the list of URLs to group
+        const urlsToGroup = await getObjectFromLocalStorage("urlsToGroup");
+
+        //Update the object if found
+        const indexToUpdate = urlsToGroup.findIndex(obj => obj.urlPattern === urlPatternToUpdate);
+        if (indexToUpdate !== -1) urlsToGroup[indexToUpdate].window = window.id;
+
+        console.log("NEW urlsToGroup: ");
+        console.log(urlsToGroup);
+        await saveObjectInLocalStorage("urlsToGroup", urlsToGroup);
+      })
     });
 
   });
