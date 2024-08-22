@@ -250,9 +250,11 @@ ready(() => {
   document.getElementById("patterns-toggle").addEventListener("click", function() {
     if (document.getElementById("patterns-toggle").classList.contains("shown")) {
       document.getElementById("patterns-toggle").classList.replace("shown", "collapsed");
+      document.getElementById("patternSearch").classList.replace("visible","hidden");
       document.getElementById("patterns").classList.replace("visible","hidden");
     } else {
       document.getElementById("patterns-toggle").classList.replace("collapsed", "shown");
+      document.getElementById("patternSearch").classList.replace("hidden","visible");
       document.getElementById("patterns").classList.replace("hidden","visible");
     }
   });
@@ -313,6 +315,34 @@ ready(() => {
     searchCriteria.dispatchEvent(event);
   });
   searchCriteria.focus(); //focus by default so we can start typing right away
+
+  //handle pattern search actions
+  const patternSearchCriteria = document.getElementById("pattern-search-criteria");
+  patternSearchCriteria.addEventListener("change", function() {
+    const searchString = patternSearchCriteria.value.toLowerCase();
+    console.log("searchString: " + searchString);
+
+    document.querySelectorAll(".patterns").forEach(function(win) {
+      const tabArray = Array.from(win.children);
+      tabArray.forEach((child) => {
+        const textContent = (child.textContent || child.innerText).toLowerCase();
+        console.log("textContent: " + textContent);
+
+        // Check if the text content contains the search string
+        if (textContent.includes(searchString)) {
+          console.log("MATCH!");
+          child.classList.add("visible"); // Show matching elements
+        } else {
+          child.classList.remove("visible"); // Hide non-matching elements
+          child.classList.add("hidden");
+        }
+      });
+    })
+  });
+  patternSearchCriteria.addEventListener("keyup", function (){
+    const event = new Event("change");
+    patternSearchCriteria.dispatchEvent(event);
+  });
 
   //handle removed tabs
   chrome.tabs.onRemoved.addListener(function(tabId, removeInfo) {
