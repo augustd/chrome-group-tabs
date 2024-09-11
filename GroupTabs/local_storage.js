@@ -6,24 +6,23 @@ const getObjectFromLocalStorage = async function(key) {
     return new Promise((resolve, reject) => {
         try {
             chrome.storage.local.get(key, function(value) {
-                console.time("getObjectFromLocalStorage: " + key);
                 console.log("getObjectFromLocalStorage: " + key);
                 console.log(value[key]);
                 console.log("type: " + (typeof value[key]));
                 if (typeof value[key] === "object") {
+                    console.log("getObjectFromLocalStorage (typeof value[key] === \"object\"): " + key);
                     console.log(value[key]);
-                    console.timeEnd("getObjectFromLocalStorage: " + key);
                     resolve(value[key]);
                 } else if (value[key]) {
                     const output = JSON.parse(value[key]);
+                    console.log("getObjectFromLocalStorage (value[key]): " + key);
                     console.log(output);
-                    console.timeEnd("getObjectFromLocalStorage: " + key);
                     resolve(output);
                 } else if ("urlsToGroup" === key) {
-                    console.timeEnd("getObjectFromLocalStorage: " + key);
+                    console.log("getObjectFromLocalStorage (\"urlsToGroup\" === key): " + key);
                     resolve([]);
                 } else {
-                    console.timeEnd("getObjectFromLocalStorage: " + key);
+                    console.log("getObjectFromLocalStorage: " + key);
                     resolve({});
                 }
             });

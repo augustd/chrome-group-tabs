@@ -234,6 +234,7 @@ async function notFoundWindow(tab, rule, urlsToGroup) {
 chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
   let ts = Date.now();
   let alwaysGroup = await getObjectFromLocalStorage("alwaysGroup");
+  alwaysGroup = !!alwaysGroup;
   console.log("chrome.tabs.onUpdated: tabId: " + tabId + " status: " + changeInfo.status + " url: " + changeInfo.url + " tab: " + tab.url + " (" + ts + ")");
   console.log("alwaysGroup? " + alwaysGroup + " (" + ts + ")");
   console.log("newTabs? " + newTabs.has(tabId) + " (" + ts + ")");
@@ -349,7 +350,8 @@ chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
 });
 
 chrome.tabs.onCreated.addListener(async function(tab) {
-  const alwaysGroup = await getObjectFromLocalStorage("alwaysGroup");
+  let alwaysGroup = await getObjectFromLocalStorage("alwaysGroup");
+  alwaysGroup = !!alwaysGroup;
   if (alwaysGroup) {
     newTabs.add(tab.id);
   }
@@ -418,7 +420,11 @@ async function startup(){
   console.log("startup");
 
   //what was the previous state of alwaysGroup?
-  const originalAlwaysGroup = await getObjectFromLocalStorage("alwaysGroup");
+  let originalAlwaysGroup = await getObjectFromLocalStorage("alwaysGroup");
+  originalAlwaysGroup = !!originalAlwaysGroup; //ensure it is a boolean
+  console.log("Original alwaysGroup:");
+  console.log(originalAlwaysGroup);
+
 
   //disable grouping for now
   await saveObjectInLocalStorage("alwaysGroup", false);
@@ -490,8 +496,10 @@ chrome.runtime.onInstalled.addListener(async function() {
     console.log("runStartup complete");
   });
 
-  let alwaysGroup = false;
-  alwaysGroup = await getObjectFromLocalStorage("alwaysGroup");
+  let alwaysGroup = await getObjectFromLocalStorage("alwaysGroup");
+  alwaysGroup = !!alwaysGroup;
+  console.log("alwaysGroup from local:")
+  console.log(alwaysGroup);
 
   chrome.contextMenus.create({"title": "Copy Link to this page",
                               "contexts":["all"],
