@@ -28,7 +28,7 @@ chrome.runtime.onMessage.addListener(
  * Groups all tabs with URLs matching a pattern into the same window
  */
 async function groupTabs(urlPattern, windowId) {
-  console.log("groupTabs: " + urlPattern);
+  console.log("groupTabs: " + urlPattern + " windowId: " + windowId);
 
   //check if we already have a window for this pattern
   await getTabWindow(urlPattern, windowId, async function(tabWindow){
@@ -50,9 +50,11 @@ async function groupTabs(urlPattern, windowId) {
           console.log("window: " + JSON.stringify(window));
 
           //new windows are always created with a blank tab. If we have passed in a tab, remove the blank one
+          /*
           if (tabId !== null) {
             window.tabs[0].remove();
           }
+           */
 
           //remove the first element from the tabs array -it has already been added to the window
           //tabs.splice(0,1);
@@ -320,6 +322,9 @@ chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
                     focusTab(movedTab);
                   });
                 }
+
+                refocusPreviousTab();
+
               } else if (tab.windowId === foundWindow.id) {
                 //tab already exists, it is in the group window already, focus it
                 console.log("about to call focusTab from within move(2)");
@@ -332,6 +337,8 @@ chrome.tabs.onUpdated.addListener(async function(tabId, changeInfo, tab) {
                   console.log("about to call focusTab from within move(3)");
                   focusTab(movedTab);
                 });
+
+                refocusPreviousTab()
               }
             });
 
@@ -359,6 +366,11 @@ chrome.tabs.onRemoved.addListener(function(tabId) {
   let ts = Date.now();
   console.log("chrome.tabs.onRemoved: tabId: " + tabId + " (" + ts + ")");
   removedTabs.delete(tabId);
+
+  // Remove the closed tab's ID from the history
+  tabHistory = tabHistory.filter(id => id !== tabId);
+
+  console.log("Updated tab history:", tabHistory);
 });
 
 chrome.windows.onRemoved.addListener(async function(winId) {
@@ -376,6 +388,131 @@ chrome.windows.onRemoved.addListener(async function(winId) {
   console.log(urlsToGroup);
   await saveObjectInLocalStorage("urlsToGroup", urlsToGroup);
   //})
+
+  //get the tabs that were in the window and remove them from the tab history
+  chrome.tabs.query({ windowId: winId }, (tabs) => {
+    tabs.forEach((tab) => {
+      // Remove tab ID from tabHistory
+      tabHistory = tabHistory.filter(tabId => tabId !== tab.id);
+    });
+    console.log(`Tabs from window ${winId} removed from tab history`);
+  });
+
+});
+
+let tabHistory = []; // Queue to store the history of active tabs
+let currentTabIndex = -1; // To track the current tab index in the history
+const MAX_HISTORY_SIZE = 50; // Limit the queue size
+
+// Function to add a tab to the history queue
+function addToTabHistory(tabId) {
+  // Don't add the tab if it's already the most recent one in the history
+  if (tabHistory[currentTabIndex] === tabId) {
+    return; // Tab is already the current tab, no need to add it again
+  }
+
+  // Clear forward history if we're navigating to a new tab
+  if (tabHistory[currentTabIndex] !== tabId) {
+    tabHistory = tabHistory.slice(0, currentTabIndex + 1);  // Keep only history up to current tab
+  }
+
+  // Add the new active tab to the history
+  tabHistory.push(tabId);
+
+  // Enforce the maximum history size
+  if (tabHistory.length > MAX_HISTORY_SIZE) {
+    tabHistory.shift();  // Remove the oldest tab from the history
+  }
+
+  // Update the index to the latest tab
+  currentTabIndex = tabHistory.length - 1;
+
+  console.log(`Updated index: ${currentTabIndex} tab history: ${tabHistory}`);
+}
+
+// Listen for tab activation
+chrome.tabs.onActivated.addListener((activeInfo) => {
+  console.log("Tab activated:", activeInfo.tabId);
+  addToTabHistory(activeInfo.tabId);
+});
+
+// Listen for window focus changes
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) {
+    console.log("No focused window.");
+    return;
+  }
+
+  // Get the active tab in the focused window
+  chrome.tabs.query({ active: true, windowId: windowId }, (tabs) => {
+    if (tabs.length > 0) {
+      const activeTab = tabs[0];
+      console.log("Window focus changed. Active tab:", activeTab.id);
+      addToTabHistory(activeTab.id);
+    }
+  });
+});
+
+function refocusPreviousTab() {
+  if (tabHistory.length < 2) {
+    console.log("No previous tab to refocus.");
+    return; // Not enough history to refocus
+  }
+
+  // Get the second-to-last tab ID
+  const previousActiveTabId = tabHistory[tabHistory.length - 2];
+
+  // Refocus the previous tab
+  chrome.tabs.update(previousActiveTabId, { active: true }, () => {
+    console.log("Refocused to previous tab:", previousActiveTabId);
+  });
+}
+
+// Function to go back to the previous tab
+async function navigateBack() {
+  // If there's not enough history or we're already at the start of the history, return
+  if (currentTabIndex <= 0 || tabHistory.length < 2) {
+    return; // Not enough history to navigate back
+  }
+
+  // Decrement the index to go to the previous tab
+  currentTabIndex--;
+
+  const previousTabId = tabHistory[currentTabIndex];
+
+  if (previousTabId) {
+    chrome.tabs.update(previousTabId, { active: true }, (tab) => {
+      chrome.windows.update(tab.windowId, { focused: true });
+      console.log("Navigated back to tab:", previousTabId);
+    });
+  }
+}
+
+async function navigateForward() {
+  if (currentTabIndex >= tabHistory.length - 1 || tabHistory.length < 2) {
+    return; // No tab to navigate forward to
+  }
+
+  // Increment the index to get the next tab
+  currentTabIndex++;
+
+  const nextTabId = tabHistory[currentTabIndex];
+
+  if (nextTabId) {
+    chrome.tabs.update(nextTabId, { active: true }, (tab) => {
+      chrome.windows.update(tab.windowId, { focused: true });
+      console.log("Navigated forward to tab:", nextTabId);
+    });
+  }
+}
+
+// Function to simulate "Command+[" behavior
+chrome.commands.onCommand.addListener((command) => {
+  if (command === "navigate_back") {
+    navigateBack();
+  } else if (command === "navigate_forward") {
+    navigateForward();
+  }
 });
 
 chrome.windows.onBoundsChanged.addListener( async function(window) {
